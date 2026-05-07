@@ -1,133 +1,21 @@
 "use client";
 
 import { continueHomeHref } from "@/lib/first-visit";
-import IntegrationMap from "@/components/landing/IntegrationMap";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import dynamic from "next/dynamic";
 import Link from "next/link";
-import {
-  ArrowDown,
-  ArrowRight,
-  ChevronLeft,
-  ChevronRight,
-  Play,
-} from "lucide-react";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import {
-  readThreeJsEnabledFromStorage,
-  writeThreeJsEnabledToStorage,
-} from "@/lib/threejs-toggle";
+import { ArrowDown, ArrowRight, Sparkles } from "lucide-react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import AppMindMap from "@/components/landing/AppMindMap";
+import { ChartAreaAxes, ChartPieDonutText } from "@/components/landing/PerformanceCharts";
 
 if (typeof window !== "undefined") {
   gsap.registerPlugin(ScrollTrigger);
 }
 
-const Globe3D = dynamic(
-  () => import("@/components/ui/3d-globe").then((m) => m.Globe3D),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="flex min-h-[300px] w-full items-center justify-center bg-[#fde047] text-xs font-bold uppercase tracking-widest text-black/45">
-        Loading globe…
-      </div>
-    ),
-  }
-);
-
 const neoBorder = "border-[3px] border-black";
 const neoShadow = "shadow-[6px_6px_0_0_#000]";
 const neoShadowSm = "shadow-[4px_4px_0_0_#000]";
-
-const DEMO_VIDEO =
-  "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4";
-
-/** Reported website / experience accuracy (0–100) for the circular chart. */
-const WEBSITE_ACCURACY_PERCENT = 94;
-
-function AccuracyDonut({ visible }: { visible: boolean }) {
-  const cx = 110;
-  const cy = 110;
-  const r = 82;
-  const stroke = 18;
-  const c = 2 * Math.PI * r;
-  const offset = c * (1 - WEBSITE_ACCURACY_PERCENT / 100);
-  const progressRef = useRef<SVGCircleElement | null>(null);
-
-  useEffect(() => {
-    const node = progressRef.current;
-    if (!node) return;
-    gsap.to(node, {
-      strokeDashoffset: visible ? offset : c,
-      duration: visible ? 1.35 : 0.35,
-      ease: visible ? "power2.out" : "power2.in",
-    });
-  }, [visible, offset, c]);
-
-  return (
-    <div
-      className={`relative mx-auto flex aspect-square w-full max-w-[min(100%,320px)] items-center justify-center ${neoBorder} ${neoShadow} bg-white p-4`}
-    >
-      <svg
-        viewBox="0 0 220 220"
-        className="size-full max-h-[280px] max-w-[280px]"
-        aria-label={`Website accuracy ${WEBSITE_ACCURACY_PERCENT} percent`}
-        role="img"
-      >
-        <g transform={`rotate(-90 ${cx} ${cy})`}>
-          <circle
-            cx={cx}
-            cy={cy}
-            r={r}
-            fill="none"
-            strokeWidth={stroke}
-            className="stroke-slate-200"
-          />
-          <circle
-            ref={progressRef}
-            cx={cx}
-            cy={cy}
-            r={r}
-            fill="none"
-            strokeWidth={stroke}
-            strokeLinecap="butt"
-            strokeDasharray={c}
-            strokeDashoffset={c}
-            className="stroke-[#22d3ee]"
-          />
-        </g>
-        {/* Outer rim */}
-        <circle
-          cx={cx}
-          cy={cy}
-          r={r + stroke / 2 + 2}
-          fill="none"
-          stroke="#000"
-          strokeWidth={3}
-          pointerEvents="none"
-        />
-        <circle
-          cx={cx}
-          cy={cy}
-          r={r - stroke / 2 - 2}
-          fill="none"
-          stroke="#000"
-          strokeWidth={3}
-          pointerEvents="none"
-        />
-      </svg>
-      <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center pt-1">
-        <span className="text-5xl font-black tabular-nums md:text-6xl">
-          {WEBSITE_ACCURACY_PERCENT}
-          <span className="align-top text-3xl font-black md:text-4xl">%</span>
-        </span>
-        <span className="mt-1 text-xs font-extrabold uppercase tracking-widest text-black/70">
-          accuracy
-        </span>
-      </div>
-    </div>
-  );
-}
 
 const testimonials = [
   {
@@ -166,35 +54,51 @@ const testimonials = [
     name: "Riley D.",
     role: "Ops Manager",
   },
-];
+] as const;
 
 const testimonialStackBgs = ["bg-white", "bg-[#fef9c3]", "bg-[#fce7f3]"] as const;
+
+const faq = [
+  {
+    q: "How does Aviora handle social media advertising integration?",
+    a: "We connect to your workflow via secure APIs and structured prompts. You keep control; Aviora helps you plan, draft, and review faster.",
+  },
+  {
+    q: "Can I manage multiple social media accounts from a single dashboard?",
+    a: "Yes. Aviora is designed to handle multiple brands/accounts while keeping performance insights and action items organized per workspace.",
+  },
+  {
+    q: "Is there a mobile app available?",
+    a: "A mobile-friendly experience is supported today; a dedicated mobile app can be added as the product roadmap evolves.",
+  },
+  {
+    q: "How does Aviora ensure data security and privacy?",
+    a: "We minimize stored data, use secure authentication, and follow least-privilege access patterns for integrations.",
+  },
+] as const;
 
 export default function NeobrutalLanding() {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const heroSectionRef = useRef<HTMLElement | null>(null);
-  const [graphEntered, setGraphEntered] = useState(false);
-  const [showThree, setShowThree] = useState(true);
-  const threeToggleRef = useRef<HTMLButtonElement | null>(null);
+  const scrollHintRef = useRef<HTMLDivElement | null>(null);
 
   const [testimonialIndex, setTestimonialIndex] = useState(0);
   const testimonialCount = testimonials.length;
   const stackLayers = [2, 1, 0] as const; // back → front draw order
   const testimonialFrontRef = useRef<HTMLElement | null>(null);
 
-  const goPrevTestimonial = () => {
+  const goPrevTestimonial = () =>
     setTestimonialIndex((i) => (i - 1 + testimonialCount) % testimonialCount);
-  };
-  const goNextTestimonial = () => {
+  const goNextTestimonial = () =>
     setTestimonialIndex((i) => (i + 1) % testimonialCount);
-  };
+
+  const activeTestimonials = useMemo(() => testimonials, []);
 
   useLayoutEffect(() => {
     const root = rootRef.current;
     if (!root || typeof window === "undefined") return;
 
-    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)")
-      .matches;
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
     const liftCleanups: (() => void)[] = [];
 
@@ -211,61 +115,45 @@ export default function NeobrutalLanding() {
             delay: 0.05,
           });
         }
-        const heroImg = root.querySelector(".landing-hero-image");
-        if (heroImg) {
-          gsap.from(heroImg, {
+
+        const heroArt = root.querySelector(".landing-hero-art");
+        if (heroArt) {
+          gsap.from(heroArt, {
             opacity: 0,
-            x: 48,
+            x: 40,
             duration: 0.75,
             ease: "power3.out",
-            delay: 0.2,
+            delay: 0.15,
+          });
+        }
+
+        if (scrollHintRef.current) {
+          gsap.to(scrollHintRef.current, {
+            y: 10,
+            duration: 0.9,
+            ease: "power1.inOut",
+            repeat: -1,
+            yoyo: true,
           });
         }
       }
 
-      const bindReveal = (
-        sectionSelector: string,
-        childSelector: string,
-        stagger = 0.1
-      ) => {
-        const section = root.querySelector(sectionSelector);
-        if (!section) return;
-        const els = section.querySelectorAll(childSelector);
-        if (!els.length) return;
-        if (reduced) {
-          gsap.set(els, { clearProps: "all" });
-          return;
-        }
-        gsap.set(els, { opacity: 0, y: 40 });
-        gsap.to(els, {
+      const revealEls = root.querySelectorAll<HTMLElement>("[data-gsap-reveal]");
+      revealEls.forEach((el) => {
+        if (reduced) return;
+        gsap.set(el, { opacity: 0, y: 26 });
+        gsap.to(el, {
           opacity: 1,
           y: 0,
-          duration: 0.72,
-          stagger,
+          duration: 0.7,
           ease: "power3.out",
           scrollTrigger: {
-            trigger: section,
-            start: "top 80%",
+            trigger: el,
+            start: "top 86%",
             toggleActions: "play none none none",
           },
         });
-      };
-
-      bindReveal("#goals", "[data-gsap-reveal]", 0.12);
-      bindReveal("#demo", "[data-gsap-reveal]", 0.1);
-      bindReveal("#metrics", "[data-gsap-reveal]", 0.1);
-      bindReveal("#testimonials", "[data-gsap-reveal]", 0.12);
-      bindReveal("#aviora", "[data-gsap-reveal]", 0.15);
-
-      const metrics = root.querySelector("#metrics");
-      if (metrics) {
-        ScrollTrigger.create({
-          trigger: metrics,
-          start: "top 78%",
-          onEnter: () => setGraphEntered(true),
-          once: true,
-        });
-      }
+      });
 
       root.querySelectorAll<HTMLElement>("[data-neo-lift]").forEach((el) => {
         const enter = () => {
@@ -341,31 +229,9 @@ export default function NeobrutalLanding() {
     );
   }, [testimonialIndex]);
 
-  useEffect(() => {
-    setShowThree(readThreeJsEnabledFromStorage(true));
-    const onEvt = (e: Event) => {
-      const ce = e as CustomEvent<{ enabled: boolean }>;
-      if (ce?.detail?.enabled != null) setShowThree(ce.detail.enabled);
-    };
-    window.addEventListener("aviora:threejs", onEvt);
-    return () => window.removeEventListener("aviora:threejs", onEvt);
-  }, []);
-
-  useEffect(() => {
-    if (!threeToggleRef.current) return;
-    gsap.fromTo(
-      threeToggleRef.current,
-      { scale: 0.96 },
-      { scale: 1, duration: 0.25, ease: "back.out(2)" }
-    );
-  }, [showThree]);
-
   return (
-    <div
-      ref={rootRef}
-      className="w-full bg-[#fffef5] text-black tracking-wide"
-    >
-      {/* —— Hero —— */}
+    <div ref={rootRef} className="w-full bg-[#fffef5] text-black tracking-wide">
+      {/* Hero */}
       <section
         ref={heroSectionRef}
         className="relative flex min-h-[100dvh] flex-col border-b-[3px] border-black bg-[#fde047]"
@@ -376,298 +242,363 @@ export default function NeobrutalLanding() {
               className={`mb-4 inline-flex items-center gap-2 ${neoBorder} ${neoShadowSm} bg-white px-4 py-2 text-sm font-bold uppercase`}
             >
               <span className="inline-block size-2 rounded-full bg-black" />
-              Learn with Aviora
+              Aviora • Social Media Management
             </p>
             <h1 className="landing-hero-title will-change-transform text-4xl font-extrabold leading-tight md:text-5xl lg:text-6xl">
-              Teach, practice, and grow—without the busywork.
+              Maximize your social media presence—fast.
             </h1>
             <p className="mt-6 text-lg font-semibold text-black/80 md:text-xl">
-              AI companions for real sessions. Bold tools for bold outcomes.
+              A neobrutal AI platform that plans, analyzes, and assists—24/7.
             </p>
             <div className="mt-10 flex flex-wrap items-center justify-center gap-4 md:justify-start">
               <Link
                 href="/sign-in"
                 data-neo-lift
-                className={`inline-flex items-center gap-2 bg-black px-6 py-3 text-sm font-bold uppercase text-white ${neoBorder} ${neoShadow}`}
+                className={`neo-press inline-flex items-center gap-2 bg-black px-6 py-3 text-sm font-bold uppercase text-white ${neoBorder} ${neoShadow}`}
               >
-                Get started
+                Get in touch
                 <ArrowRight className="size-4" aria-hidden />
               </Link>
               <a
-                href="#goals"
+                href="#advanced"
                 data-neo-lift
-                className={`inline-flex items-center gap-2 bg-white px-6 py-3 text-sm font-bold uppercase ${neoBorder} ${neoShadowSm}`}
+                className={`neo-press inline-flex items-center gap-2 bg-white px-6 py-3 text-sm font-bold uppercase ${neoBorder} ${neoShadowSm}`}
               >
-                Scroll for goals
+                Scroll down
                 <ArrowDown className="size-4" aria-hidden />
               </a>
               <Link
                 href={continueHomeHref}
                 data-neo-lift
-                className={`inline-flex items-center gap-2 bg-[#86efac] px-6 py-3 text-sm font-bold uppercase ${neoBorder} ${neoShadowSm}`}
+                className={`neo-press inline-flex items-center gap-2 bg-[#86efac] px-6 py-3 text-sm font-bold uppercase ${neoBorder} ${neoShadowSm}`}
               >
                 Continue to app
                 <ArrowRight className="size-4" aria-hidden />
               </Link>
-              <button
-                ref={threeToggleRef}
-                type="button"
-                onClick={() => {
-                  const next = !showThree;
-                  setShowThree(next);
-                  writeThreeJsEnabledToStorage(next);
-                }}
-                data-neo-lift
-                className={`inline-flex items-center gap-2 px-6 py-3 text-sm font-bold uppercase ${neoBorder} ${neoShadowSm} ${
-                  showThree ? "bg-[#e0f2fe]" : "bg-white"
-                }`}
-                aria-pressed={showThree}
-              >
-                Interview Mode
-                <span className="ml-2 rounded-full border border-black bg-[#fde047] px-2 py-0.5 text-[10px] font-black uppercase tracking-widest">
-                  Coming soon
-                </span>
-              </button>
             </div>
           </div>
 
           <div
             data-neo-lift
-            className="landing-hero-image relative w-full max-w-md overflow-hidden bg-[#fde047]"
+            className="landing-hero-art relative w-full max-w-md overflow-hidden bg-[#fde047]"
           >
-            {showThree ? (
-              <Globe3D
-                className="mx-auto h-[min(52vh,440px)] min-h-[280px] w-full max-w-md md:min-h-[360px]"
-                config={{
-                  backgroundColor: "transparent",
-                  autoRotateSpeed: 0.35,
-                  enableZoom: true,
-                  enablePan: false,
-                  minDistance: 3.5,
-                  maxDistance: 14,
-                  showAtmosphere: true,
-                  atmosphereColor: "#38bdf8",
-                  atmosphereIntensity: 0.45,
-                }}
-              />
-            ) : (
-              <div className="flex min-h-[280px] w-full items-center justify-center md:min-h-[360px]">
-                <div
-                  className={`flex flex-col items-center gap-2 ${neoBorder} ${neoShadowSm} bg-white px-6 py-5 text-center`}
-                >
-                  <p className="text-xs font-black uppercase tracking-widest text-black/70">
-                    Three.js disabled
-                  </p>
-                  <p className="max-w-[22ch] text-sm font-semibold text-black/80">
-                    Turn it on for the interactive globe.
+            <div
+              className={`relative overflow-hidden ${neoBorder} ${neoShadow} bg-white`}
+            >
+              <div className="flex min-h-[320px] flex-col justify-between gap-6 p-7 md:min-h-[360px]">
+                <div className="space-y-3">
+                  <div className="inline-flex items-center gap-2 border-[3px] border-black bg-[#fde047] px-3 py-2 text-xs font-black uppercase tracking-widest">
+                    <Sparkles className="size-4" aria-hidden />
+                    Aviora
+                  </div>
+                  <h3 className="text-2xl font-extrabold leading-tight">
+                    Your always-on social media copilot.
+                  </h3>
+                  <p className="text-sm font-semibold text-black/75">
+                    Analytics, reporting, and recommendations—delivered in a
+                    bold, simple flow.
                   </p>
                 </div>
+
+                <div className="grid gap-3">
+                  {[
+                    "Scroll-trigger insights",
+                    "Neobrutal UI + micro-interactions",
+                    "24/7 personal assistance",
+                  ].map((t) => (
+                    <div
+                      key={t}
+                      className="flex items-center justify-between gap-3 border-[3px] border-black bg-[#a5f3fc] px-4 py-3 text-xs font-black uppercase tracking-widest"
+                    >
+                      <span className="truncate">{t}</span>
+                      <ArrowRight className="size-4 shrink-0" aria-hidden />
+                    </div>
+                  ))}
+                </div>
               </div>
-            )}
+            </div>
           </div>
         </div>
 
         <a
-          href="#goals"
+          href="#advanced"
           className="absolute bottom-8 left-1/2 flex -translate-x-1/2 flex-col items-center gap-2 text-xs font-bold uppercase"
-          aria-label="Scroll to goals"
+          aria-label="Scroll down"
         >
-          <span className="animate-bounce">
+          <div
+            ref={scrollHintRef}
+            className={`flex items-center gap-2 ${neoBorder} ${neoShadowSm} bg-white px-4 py-2`}
+          >
+            <span>Scroll Down</span>
             <ArrowDown className="size-6" />
-          </span>
+          </div>
         </a>
       </section>
 
-      {/* —— Goals (fade in on scroll) —— */}
+      {/* Advanced Analytics and Reporting */}
       <section
-        id="goals"
-        className="border-b-[3px] border-black bg-[#a5f3fc] px-4 py-24 md:py-32"
+        id="advanced"
+        className="border-b-[3px] border-black bg-white px-4 py-24 md:py-32"
       >
-        <div className="mx-auto max-w-4xl text-center">
+        <div className="mx-auto max-w-6xl">
           <p
             data-gsap-reveal
             className={`mx-auto mb-6 inline-block ${neoBorder} ${neoShadowSm} bg-white px-5 py-2 text-xs font-bold uppercase tracking-widest`}
           >
-            Our goals
+            Advanced Analytics and Reporting
           </p>
           <h2
             data-gsap-reveal
-            className="text-3xl font-extrabold leading-tight md:text-5xl"
+            className="mx-auto max-w-3xl text-center text-3xl font-extrabold leading-tight md:text-5xl"
           >
-            Empower every learner with clarity, speed, and confidence.
+            Track performance. Optimize in real time. Report with confidence.
           </h2>
           <p
             data-gsap-reveal
-            className="mx-auto mt-8 max-w-2xl text-base font-semibold text-black/80 md:text-lg"
+            className="mx-auto mt-8 max-w-2xl text-center text-base font-semibold text-black/80 md:text-lg"
           >
-            We build tools that feel direct and human: structured sessions, honest
-            feedback, and workflows your team can repeat every week.
+            A clean dashboard that answers the only questions that matter: what is
+            working, why it is working, and what to do next.
           </p>
 
-          <div className="mt-16 grid gap-6 md:grid-cols-3">
+          <div className="mt-16 grid gap-6 md:grid-cols-2">
             {[
               {
-                title: "Efficiency",
-                body: "Ship lessons faster with prompts and flows tuned for teaching—not generic chat.",
-                bg: "bg-[#fef08e]",
+                title: "Target Audiences",
+                body: "Understand who engages, when they engage, and which creatives actually convert.",
+                bg: "bg-[#fde047]",
               },
               {
-                title: "Versatile",
-                body: "Across subjects and cohort sizes, keep one rhythm: prepare, run, review.",
-                bg: "bg-[#fda4af]",
+                title: "Optimized Performance",
+                body: "Spot bottlenecks instantly and apply improvements that lift reach and retention.",
+                bg: "bg-[#a5f3fc]",
               },
-              {
-                title: "Seamless",
-                body: "From first sign-in to recap, reduce friction so energy stays in the room.",
-                bg: "bg-[#c4b5fd]",
-              },
-            ].map((card, index) => (
+            ].map((card) => (
               <article
                 key={card.title}
                 data-gsap-reveal
                 data-neo-lift
                 className={`flex flex-col gap-4 p-6 text-left ${neoBorder} ${neoShadow} ${card.bg}`}
               >
-                <div className="flex size-12 items-center justify-center rounded-full border-[3px] border-black bg-white font-black">
-                  {index + 1}
-                </div>
-                <h3 className="text-xl font-extrabold">{card.title}</h3>
+                <h3 className="text-2xl font-extrabold">{card.title}</h3>
                 <p className="text-sm font-semibold leading-relaxed text-black/85">
                   {card.body}
                 </p>
+                <div className="mt-2 inline-flex w-fit items-center gap-2 border-[3px] border-black bg-white px-3 py-2 text-xs font-black uppercase tracking-widest">
+                  Live insights
+                  <ArrowRight className="size-4" aria-hidden />
+                </div>
+              </article>
+            ))}
+          </div>
+
+          <div className="mt-10 grid gap-6 lg:grid-cols-2">
+            <div data-gsap-reveal data-neo-lift>
+              <ChartAreaAxes />
+            </div>
+            <div data-gsap-reveal data-neo-lift>
+              <ChartPieDonutText />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ChatGPT / Deepseek / Gemini */}
+      <section
+        id="models"
+        className="border-b-[3px] border-black bg-[#fbcfe8] px-4 py-24 md:py-32"
+      >
+        <div className="mx-auto max-w-6xl">
+          <div className="mb-12 text-center" data-gsap-reveal>
+            <p
+              className={`mx-auto mb-4 inline-block ${neoBorder} ${neoShadowSm} bg-white px-5 py-2 text-xs font-bold uppercase`}
+            >
+              AI Models
+            </p>
+            <h2 className="text-3xl font-extrabold md:text-4xl">
+              ChatGPT, Deepseek, and Gemini—aligned to your workflow.
+            </h2>
+            <p className="mx-auto mt-4 max-w-2xl font-semibold text-black/75">
+              Pick the right brain for the right job: ideation, optimization, and
+              deep analysis.
+            </p>
+          </div>
+
+          <div className="grid gap-6 md:grid-cols-3">
+            {[
+              {
+                title: "ChatGPT",
+                body: "Fast content drafts, hooks, and iterations—without losing brand voice.",
+                bg: "bg-[#d9f99d]",
+              },
+              {
+                title: "Deepseek",
+                body: "Deep research and structured analysis for campaigns and competitors.",
+                bg: "bg-[#fef08e]",
+              },
+              {
+                title: "Gemini",
+                body: "Multimodal-friendly workflows that connect visuals, text, and context.",
+                bg: "bg-[#a5b4fc]",
+              },
+            ].map((m) => (
+              <article
+                key={m.title}
+                data-gsap-reveal
+                data-neo-lift
+                className={`flex flex-col gap-4 p-6 ${neoBorder} ${neoShadow} ${m.bg}`}
+              >
+                <h3 className="text-2xl font-extrabold uppercase tracking-wide">
+                  {m.title}
+                </h3>
+                <p className="text-sm font-semibold text-black/85">{m.body}</p>
+                <div className="mt-auto inline-flex w-fit items-center gap-2 border-[3px] border-black bg-white px-3 py-2 text-xs font-black uppercase tracking-widest">
+                  Plug & play
+                  <ArrowRight className="size-4" aria-hidden />
+                </div>
               </article>
             ))}
           </div>
         </div>
       </section>
 
-      {/* —— Video —— */}
+      {/* Vision & AIM */}
       <section
-        id="demo"
-        className="border-b-[3px] border-black bg-white px-4 py-24 md:py-32"
+        id="vision"
+        className="border-b-[3px] border-black bg-[#d9f99d] px-4 py-24 md:py-32"
       >
-        <div className="mx-auto max-w-5xl">
-          <div className="mb-12 text-center">
+        <div className="mx-auto max-w-6xl">
+          <div className="mb-12 text-center" data-gsap-reveal>
             <p
-              data-gsap-reveal
-              className={`mx-auto mb-4 inline-block ${neoBorder} ${neoShadowSm} bg-[#fde047] px-5 py-2 text-xs font-bold uppercase`}
-            >
-              How it works
-            </p>
-            <h2
-              data-gsap-reveal
-              className="text-3xl font-extrabold md:text-4xl"
-            >
-              See the application in motion
-            </h2>
-            <p
-              data-gsap-reveal
-              className="mx-auto mt-4 max-w-2xl font-semibold text-black/75"
-            >
-              Replace the sample clip with your product walkthrough—drop in a hosted
-              MP4 or embed when you are ready.
-            </p>
-          </div>
-
-          <div
-            data-gsap-reveal
-            data-neo-lift
-            className={`relative overflow-hidden ${neoBorder} ${neoShadow} bg-black`}
-          >
-            <div className="aspect-video w-full">
-              <video
-                className="h-full w-full object-cover"
-                controls
-                playsInline
-                preload="metadata"
-                poster="/images/landing-hero.png"
-              >
-                <source src={DEMO_VIDEO} type="video/mp4" />
-                Your browser does not support embedded video.
-              </video>
-            </div>
-            <div className="flex items-center justify-between gap-4 border-t-[3px] border-black bg-[#86efac] px-4 py-3 text-sm font-bold uppercase">
-              <span className="flex items-center gap-2">
-                <Play className="size-4 fill-black" aria-hidden />
-                Product demo
-              </span>
-              <span className="hidden sm:inline">Controls enabled</span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* —— Graph —— */}
-      <section
-        id="metrics"
-        className="border-b-[3px] border-black bg-[#fbcfe8] px-4 py-24 md:py-32"
-      >
-        <div className="mx-auto max-w-5xl">
-          <div className="mb-12 text-center">
-            <p
-              data-gsap-reveal
               className={`mx-auto mb-4 inline-block ${neoBorder} ${neoShadowSm} bg-white px-5 py-2 text-xs font-bold uppercase`}
             >
-              Impact
+              Vision & AIM
             </p>
-            <h2
-              data-gsap-reveal
-              className="text-3xl font-extrabold md:text-4xl"
-            >
-              Website accuracy—measured in one clear ring
+            <h2 className="text-3xl font-extrabold md:text-4xl">
+              A bold vision. A practical aim.
             </h2>
-            <p
-              data-gsap-reveal
-              className="mx-auto mt-4 max-w-2xl font-semibold text-black/75"
-            >
-              Composite score across session quality, guidance match, and learner
-              outcomes—swap in live data when your analytics feed is ready.
+            <p className="mx-auto mt-4 max-w-2xl font-semibold text-black/75">
+              Built for teams that want creative speed without sacrificing clarity.
             </p>
           </div>
 
-          <div
-            data-gsap-reveal
-            data-neo-lift
-            className={`flex flex-col items-stretch gap-10 md:flex-row md:items-center md:justify-between ${neoBorder} ${neoShadow} bg-white p-6 md:p-10`}
-          >
-            <div
-              data-neo-lift
-              className="flex flex-1 flex-col items-center justify-center border-[3px] border-black bg-[#f0f9ff] p-8 md:min-h-[340px]"
-            >
-              <AccuracyDonut visible={graphEntered} />
-              <p className="mt-8 max-w-sm text-center text-sm font-bold uppercase tracking-wide text-black/80">
-                Ring fills as you scroll into view—full sweep is{" "}
-                {WEBSITE_ACCURACY_PERCENT}% platform accuracy
-              </p>
-            </div>
-
-            <aside
-              data-neo-lift
-              className="flex w-full max-w-md flex-col gap-4 border-[3px] border-black bg-[#fde047] p-5 font-bold md:w-[280px] md:shrink-0"
-            >
-              <p className="text-sm uppercase tracking-widest">How to read it</p>
-              <ul className="space-y-3 text-sm leading-snug">
-                <li>
-                  <span className="block text-xs uppercase text-black/70">
-                    Ring
-                  </span>
-                  One full circle equals 100%—the cyan arc is your current accuracy
-                  score.
-                </li>
-                <li>
-                  <span className="block text-xs uppercase text-black/70">
-                    Center
-                  </span>
-                  The bold number matches the arc so visitors get the headline stat
-                  instantly.
-                </li>
-              </ul>
-            </aside>
+          <div className="grid gap-6 md:grid-cols-2">
+            {[
+              {
+                title: "Vision",
+                body: "Make every creator feel supported by an intelligent system that scales with ambition.",
+                bg: "bg-white",
+              },
+              {
+                title: "AIM",
+                body: "Deliver actionable insights and recommendations in real-time—so decisions are always one step ahead.",
+                bg: "bg-[#a5f3fc]",
+              },
+            ].map((c) => (
+              <article
+                key={c.title}
+                data-gsap-reveal
+                data-neo-lift
+                className={`flex flex-col gap-4 p-7 ${neoBorder} ${neoShadow} ${c.bg}`}
+              >
+                <h3 className="text-2xl font-extrabold uppercase tracking-wide">
+                  {c.title}
+                </h3>
+                <p className="text-sm font-semibold leading-relaxed text-black/85">
+                  {c.body}
+                </p>
+                <div className="mt-auto inline-flex w-fit items-center gap-2 border-[3px] border-black bg-[#fde047] px-3 py-2 text-xs font-black uppercase tracking-widest">
+                  Built for action
+                </div>
+              </article>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* —— Testimonials —— */}
+      {/* App mindmap */}
+      <section
+        id="mindmap"
+        className="border-b-[3px] border-black bg-[#fef3c7] px-4 py-24 md:py-32"
+      >
+        <div className="mx-auto max-w-6xl">
+          <div className="mb-12 text-center" data-gsap-reveal>
+            <p
+              className={`mx-auto mb-4 inline-block ${neoBorder} ${neoShadowSm} bg-white px-5 py-2 text-xs font-bold uppercase`}
+            >
+              Application Flow
+            </p>
+            <h2 className="text-3xl font-extrabold md:text-4xl">
+              Mindmap of how Aviora connects.
+            </h2>
+            <p className="mx-auto mt-4 max-w-2xl font-semibold text-black/75">
+              Pan, zoom, and drag nodes to explore the journey from landing →
+              sessions → subtitles → history.
+            </p>
+          </div>
+
+          <div data-gsap-reveal data-neo-lift>
+            <AppMindMap />
+          </div>
+        </div>
+      </section>
+
+      {/* Stats */}
+      <section
+        id="stats"
+        className="border-b-[3px] border-black bg-[#a5f3fc] px-4 py-24 md:py-32"
+      >
+        <div className="mx-auto max-w-6xl">
+          <div className="mb-12 text-center" data-gsap-reveal>
+            <p
+              className={`mx-auto mb-4 inline-block ${neoBorder} ${neoShadowSm} bg-white px-5 py-2 text-xs font-bold uppercase`}
+            >
+              Outcomes
+            </p>
+            <h2 className="text-3xl font-extrabold md:text-4xl">
+              Current users. Increased performance. 24/7 assistance.
+            </h2>
+          </div>
+
+          <div className="grid gap-6 md:grid-cols-3">
+            {[
+              {
+                k: "+270K",
+                t: "Current Users",
+                d: "Teams and creators using Aviora to plan and publish consistently.",
+                bg: "bg-white",
+              },
+              {
+                k: "8×",
+                t: "Increase Performance",
+                d: "Iterate faster with insights that highlight what works in minutes.",
+                bg: "bg-[#fef08e]",
+              },
+              {
+                k: "24/7",
+                t: "Personal Assistance",
+                d: "Always-on support for content, analytics, and next-step recommendations.",
+                bg: "bg-[#fda4af]",
+              },
+            ].map((s) => (
+              <article
+                key={s.t}
+                data-gsap-reveal
+                data-neo-lift
+                className={`flex flex-col gap-3 p-7 ${neoBorder} ${neoShadow} ${s.bg}`}
+              >
+                <div className="text-5xl font-black tracking-tight">{s.k}</div>
+                <div className="text-sm font-black uppercase tracking-widest">
+                  {s.t}
+                </div>
+                <p className="text-sm font-semibold text-black/80">{s.d}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Testimonials */}
       <section
         id="testimonials"
         className="border-b-[3px] border-black bg-[#d9f99d] px-4 py-24 md:py-32"
@@ -699,7 +630,9 @@ export default function NeobrutalLanding() {
               data-neo-lift
               className={`flex size-12 shrink-0 items-center justify-center self-center md:self-auto ${neoBorder} ${neoShadowSm} bg-white text-black md:mt-24`}
             >
-              <ChevronLeft className="size-7" strokeWidth={3} aria-hidden />
+              <span className="text-2xl font-black" aria-hidden>
+                ‹
+              </span>
             </button>
 
             <div
@@ -708,13 +641,13 @@ export default function NeobrutalLanding() {
               aria-roledescription="carousel"
             >
               <p className="sr-only" aria-live="polite">
-                {testimonials[testimonialIndex].name}:{" "}
-                {testimonials[testimonialIndex].quote}
+                {activeTestimonials[testimonialIndex].name}:{" "}
+                {activeTestimonials[testimonialIndex].quote}
               </p>
+
               {stackLayers.map((depth) => {
-                const cardIndex =
-                  (testimonialIndex + depth) % testimonialCount;
-                const t = testimonials[cardIndex];
+                const cardIndex = (testimonialIndex + depth) % testimonialCount;
+                const t = activeTestimonials[cardIndex];
                 const isFront = depth === 0;
                 const tx = depth * 14;
                 const ty = depth * 12;
@@ -758,7 +691,9 @@ export default function NeobrutalLanding() {
               data-neo-lift
               className={`flex size-12 shrink-0 items-center justify-center self-center md:self-auto ${neoBorder} ${neoShadowSm} bg-white text-black md:mt-24`}
             >
-              <ChevronRight className="size-7" strokeWidth={3} aria-hidden />
+              <span className="text-2xl font-black" aria-hidden>
+                ›
+              </span>
             </button>
           </div>
 
@@ -768,59 +703,117 @@ export default function NeobrutalLanding() {
         </div>
       </section>
 
-      {/* —— Models & integration map —— */}
-      <section id="aviora" className="bg-[#fef3c7] px-4 py-24 md:py-32">
-        <div className="mx-auto max-w-4xl">
-          <div
-            data-neo-lift
-            className="flex flex-col gap-8 p-0 md:p-0"
-          >
-            <div className="text-center">
-              <p
-                data-gsap-reveal
-                className="text-sm font-bold uppercase tracking-[0.35em]"
-              >
-                The learning layer
-              </p>
-              <h2
-                data-gsap-reveal
-                className="mt-3 text-2xl font-extrabold md:text-3xl"
-              >
-                Models we use & how they plug in
-              </h2>
-              <p
-                data-gsap-reveal
-                className="mx-auto mt-2 max-w-xl text-sm font-semibold text-black/75 md:text-base"
-              >
-                Transit-style map: each stop is a real integration path. Hover a
-                stop to stress its route—lines draw in as you scroll.
-              </p>
-            </div>
-
-            <div data-gsap-reveal>
-              <IntegrationMap />
-            </div>
-
-            <div
-              data-gsap-reveal
-              className="flex flex-wrap items-center justify-center gap-4 pt-2"
+      {/* FAQ */}
+      <section
+        id="faq"
+        className="border-b-[3px] border-black bg-white px-4 py-24 md:py-32"
+      >
+        <div className="mx-auto max-w-5xl">
+          <div className="mb-12 text-center" data-gsap-reveal>
+            <p
+              className={`mx-auto mb-4 inline-block ${neoBorder} ${neoShadowSm} bg-[#fde047] px-5 py-2 text-xs font-bold uppercase`}
             >
-              <Link
-                href="/sign-in"
-                data-neo-lift
-                className={`inline-flex items-center gap-2 bg-black px-8 py-4 text-sm font-bold uppercase text-white ${neoBorder} ${neoShadowSm}`}
+              Frequently Asked Questions
+            </p>
+            <h2 className="text-3xl font-extrabold md:text-4xl">
+              Quick answers, no fluff.
+            </h2>
+          </div>
+
+          <div className="grid gap-4">
+            {faq.map((item) => (
+              <details
+                key={item.q}
+                data-gsap-reveal
+                className={`${neoBorder} ${neoShadowSm} bg-[#fef9c3] p-5`}
               >
-                Sign in
-                <ArrowRight className="size-4" aria-hidden />
-              </Link>
-              <Link
-                href={continueHomeHref}
+                <summary className="cursor-pointer list-none text-base font-extrabold">
+                  {item.q}
+                </summary>
+                <p className="mt-3 text-sm font-semibold leading-relaxed text-black/80">
+                  {item.a}
+                </p>
+              </details>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Moto + nested sign-in card */}
+      <section id="moto" className="bg-[#fde047] px-4 py-24 md:py-32">
+        <div className="mx-auto max-w-5xl">
+          <div
+            data-gsap-reveal
+            data-neo-lift
+            className={`${neoBorder} ${neoShadow} bg-white p-8 md:p-12`}
+          >
+            <div className="grid gap-10 md:grid-cols-2 md:items-center">
+              <div className="space-y-4">
+                <p className="text-xs font-black uppercase tracking-widest text-black/70">
+                  Our Moto
+                </p>
+                <h2 className="text-3xl font-extrabold md:text-4xl">
+                  Bold ideas. Brutal clarity. Real results.
+                </h2>
+                <p className="text-sm font-semibold leading-relaxed text-black/80">
+                  Aviora is built to help you ship faster, learn from your data,
+                  and stay consistent—without drowning in tools.
+                </p>
+                <div className="flex flex-wrap items-center gap-3 pt-2">
+                  <Link
+                    href={continueHomeHref}
+                    data-neo-lift
+                    className={`neo-press inline-flex items-center gap-2 bg-[#86efac] px-6 py-3 text-sm font-bold uppercase ${neoBorder} ${neoShadowSm}`}
+                  >
+                    Enter app
+                    <ArrowRight className="size-4" aria-hidden />
+                  </Link>
+                  <a
+                    href="#advanced"
+                    data-neo-lift
+                    className={`neo-press inline-flex items-center gap-2 bg-white px-6 py-3 text-sm font-bold uppercase ${neoBorder} ${neoShadowSm}`}
+                  >
+                    Back to top
+                    <ArrowDown className="size-4" aria-hidden />
+                  </a>
+                </div>
+              </div>
+
+              <div
                 data-neo-lift
-                className={`inline-flex items-center gap-2 bg-white px-8 py-4 text-sm font-bold uppercase ${neoBorder} ${neoShadowSm}`}
+                className={`${neoBorder} ${neoShadowSm} bg-[#a5f3fc] p-6`}
               >
-                Continue to app
-                <ArrowRight className="size-4" aria-hidden />
-              </Link>
+                <div className="mb-4 inline-flex items-center gap-2 border-[3px] border-black bg-white px-3 py-2 text-xs font-black uppercase tracking-widest">
+                  Sign In
+                  <ArrowRight className="size-4" aria-hidden />
+                </div>
+                <div data-neo-lift className={`${neoBorder} ${neoShadowSm} bg-white p-6`}>
+                  <p className="text-sm font-extrabold">
+                    Start your workspace in minutes.
+                  </p>
+                  <p className="mt-2 text-sm font-semibold text-black/75">
+                    Connect your accounts, get insights, and let Aviora assist 24/7.
+                  </p>
+                  <div className="mt-5 flex flex-col gap-3">
+                    <Link
+                      href="/sign-in"
+                      data-neo-lift
+                      className={`neo-press inline-flex w-full items-center justify-center gap-2 bg-black px-6 py-3 text-sm font-bold uppercase text-white ${neoBorder} ${neoShadowSm}`}
+                    >
+                      Sign in
+                      <ArrowRight className="size-4" aria-hidden />
+                    </Link>
+                    <Link
+                      href="/sign-up"
+                      data-neo-lift
+                      className={`neo-press inline-flex w-full items-center justify-center gap-2 bg-white px-6 py-3 text-sm font-bold uppercase ${neoBorder} ${neoShadowSm}`}
+                    >
+                      Create account
+                      <ArrowRight className="size-4" aria-hidden />
+                    </Link>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -828,3 +821,4 @@ export default function NeobrutalLanding() {
     </div>
   );
 }
+

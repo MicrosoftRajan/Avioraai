@@ -223,4 +223,11 @@ body {
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+
+  .neo-press {
+    transition: transform 120ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .neo-press:active {
+    transform: translate(2px, 2px);
+  }
 }
