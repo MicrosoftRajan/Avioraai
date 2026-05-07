@@ -8,6 +8,7 @@ import { ArrowDown, ArrowRight, Sparkles } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import AppMindMap from "@/components/landing/AppMindMap";
 import { ChartAreaAxes, ChartPieDonutText } from "@/components/landing/PerformanceCharts";
+import TypewriterText from "@/components/landing/TypewriterText";
 
 if (typeof window !== "undefined") {
   gsap.registerPlugin(ScrollTrigger);
@@ -81,6 +82,7 @@ export default function NeobrutalLanding() {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const heroSectionRef = useRef<HTMLElement | null>(null);
   const scrollHintRef = useRef<HTMLDivElement | null>(null);
+  const heroUnderlineRef = useRef<HTMLSpanElement | null>(null);
 
   const [testimonialIndex, setTestimonialIndex] = useState(0);
   const testimonialCount = testimonials.length;
@@ -134,6 +136,18 @@ export default function NeobrutalLanding() {
             ease: "power1.inOut",
             repeat: -1,
             yoyo: true,
+          });
+        }
+
+        if (heroUnderlineRef.current) {
+          gsap.to(heroUnderlineRef.current, {
+            scrollTrigger: {
+              trigger: heroUnderlineRef.current,
+              start: "top 80%",
+              toggleActions: "play none none none",
+            },
+            onStart: () => heroUnderlineRef.current?.setAttribute("data-underline", "on"),
+            duration: 0.01,
           });
         }
       }
@@ -236,6 +250,13 @@ export default function NeobrutalLanding() {
         ref={heroSectionRef}
         className="relative flex min-h-[100dvh] flex-col border-b-[3px] border-black bg-[#fde047]"
       >
+        {/* Cinematic blobs */}
+        <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+          <div className="absolute -left-24 top-14 size-[260px] rounded-full border-[3px] border-black bg-[#a5f3fc] opacity-35 blur-[0.5px]" />
+          <div className="absolute -right-28 top-40 size-[320px] rounded-full border-[3px] border-black bg-[#fbcfe8] opacity-30 blur-[0.5px]" />
+          <div className="absolute left-1/3 bottom-10 size-[220px] rounded-full border-[3px] border-black bg-[#d9f99d] opacity-25 blur-[0.5px]" />
+        </div>
+
         <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col items-center justify-center gap-10 px-4 py-16 pt-8 md:flex-row md:items-center md:justify-between md:gap-12">
           <div className="landing-hero-intro max-w-xl text-center md:text-left">
             <p
@@ -245,10 +266,14 @@ export default function NeobrutalLanding() {
               Aviora • Social Media Management
             </p>
             <h1 className="landing-hero-title will-change-transform text-4xl font-extrabold leading-tight md:text-5xl lg:text-6xl">
-              Maximize your social media presence—fast.
+              <TypewriterText text="Maximize your social media presence—fast." />
             </h1>
             <p className="mt-6 text-lg font-semibold text-black/80 md:text-xl">
-              A neobrutal AI platform that plans, analyzes, and assists—24/7.
+              A neobrutal AI platform that{" "}
+              <span ref={heroUnderlineRef} className="neo-underline">
+                plans, analyzes, and assists
+              </span>
+              —24/7.
             </p>
             <div className="mt-10 flex flex-wrap items-center justify-center gap-4 md:justify-start">
               <Link
@@ -563,7 +588,7 @@ export default function NeobrutalLanding() {
           <div className="grid gap-6 md:grid-cols-3">
             {[
               {
-                k: "+270K",
+                k: "1000+",
                 t: "Current Users",
                 d: "Teams and creators using Aviora to plan and publish consistently.",
                 bg: "bg-white",

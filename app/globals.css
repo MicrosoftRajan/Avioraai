@@ -230,4 +230,24 @@ body {
   .neo-press:active {
     transform: translate(2px, 2px);
   }
+
+  .neo-underline {
+    position: relative;
+    display: inline-block;
+  }
+  .neo-underline::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: -0.18em;
+    height: 0.22em;
+    width: 100%;
+    background: #000;
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .neo-underline[data-underline="on"]::after {
+    transform: scaleX(1);
+  }
 }
