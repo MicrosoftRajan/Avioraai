@@ -10,7 +10,13 @@ const CTA = () => {
       <p>Pick a name, subject, Voice, & personality - and start learning through voice conversation that feel neutral and fun</p>
       <Image src="images/cta.svg" alt='cta' width={362} height={232}/>
       <button className='btn-primary'>
-        <Image src="icons/plus.svg" alt='plus' width={12} height={12}/>
+        <Image
+          src="/icons/plus.svg"
+          alt="plus"
+          width={12}
+          height={12}
+          className="h-auto w-auto max-w-none shrink-0"
+        />
         <Link href="/companions/new">
         <p>Build Your Future Together</p>
         </Link>

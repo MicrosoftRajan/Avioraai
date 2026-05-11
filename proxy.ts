@@ -1,11 +1,21 @@
-import { clerkMiddleware } from "@clerk/nextjs/server";
+import {
+  clerkMiddleware,
+  createRouteMatcher,
+} from "@clerk/nextjs/server";
 import {
   MARK_RETURNING_SEARCH_PARAM,
   RETURNING_VISITOR_COOKIE,
 } from "@/lib/first-visit";
 import { NextResponse } from "next/server";
 
-export default clerkMiddleware((_auth, request) => {
+const isPublicRoute = createRouteMatcher([
+  "/",
+  "/landing(.*)",
+  "/sign-in(.*)",
+  "/sign-up(.*)",
+]);
+
+export default clerkMiddleware(async (auth, request) => {
   if (
     request.nextUrl.pathname === "/" &&
     request.nextUrl.searchParams.get(MARK_RETURNING_SEARCH_PARAM) === "1"
@@ -19,6 +29,10 @@ export default clerkMiddleware((_auth, request) => {
       sameSite: "lax",
     });
     return response;
+  }
+
+  if (!isPublicRoute(request)) {
+    await auth.protect();
   }
 });
 

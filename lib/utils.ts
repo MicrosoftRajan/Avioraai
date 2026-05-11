@@ -1,7 +1,18 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
-import { voices } from "@/constants";
+import { subjects, voices } from "@/constants";
 import { CreateAssistantDTO } from "@vapi-ai/web/dist/api";
+
+const SUBJECT_ICON_SLUGS = new Set<string>(subjects);
+
+/** Public path for subject SVG; falls back when DB value doesn't match a known icon file. */
+export function getSubjectIconSrc(subject: string): string {
+  const slug = subject.trim().toLowerCase();
+  if (SUBJECT_ICON_SLUGS.has(slug)) {
+    return `/icons/${slug}.svg`;
+  }
+  return "/icons/bookmark.svg";
+}
 
 export const subjectsColors = {
   science: "#E5D0FF",

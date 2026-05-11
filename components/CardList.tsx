@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/table";
 import Link from "next/link";
 import Image from "next/image";
-import { cn } from "@/lib/utils";
+import { cn, getSubjectIconSrc } from "@/lib/utils";
 
 
 
@@ -55,12 +55,14 @@ const CardList = ({ title, companions, classNames, description }: CardListProps)
               <TableCell>
                 <Link href={`/companions/${id}`}>
                   <div className="flex items-center gap-2">
-                    <div className="size-[72px] flex  items-center justify-center rounded-lg max-md:hidden">
+                    <div className="relative flex size-[72px] shrink-0 items-center justify-center overflow-hidden rounded-lg max-md:hidden">
                       <Image
-                        src={`/icons/${subject}.svg`}
-                        alt="subject"
+                        src={getSubjectIconSrc(String(subject))}
+                        alt=""
                         width={35}
                         height={35}
+                        unoptimized
+                        className="size-[35px] object-contain"
                       />
                     </div>
                     <div className="flex flex-col gap-2">
@@ -74,12 +76,14 @@ const CardList = ({ title, companions, classNames, description }: CardListProps)
                 <div className="subject-badge w-fit max-md:hidden">
                   {subject}
                 </div>
-                <div className="flex items-center justify-center rounded-lg w-fit p-2 md:hidden">
+                <div className="relative flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-lg p-2 md:hidden">
                   <Image
-                    src={`/icons/${subject}.svg`}
-                    alt="subject"
+                    src={getSubjectIconSrc(String(subject))}
+                    alt=""
                     width={18}
                     height={18}
+                    unoptimized
+                    className="size-[18px] object-contain"
                   />
                 </div>
               </TableCell>
@@ -88,7 +92,14 @@ const CardList = ({ title, companions, classNames, description }: CardListProps)
                   <p className="text-2xl">
                     {duration} <span className="max-md:hidden">mins</span>
                   </p>
-                  <Image src="/icons/clock.svg" alt="minutes" width={14} height={14} className="md:hidden"/>
+                  <Image
+                    src="/icons/clock.svg"
+                    alt=""
+                    width={14}
+                    height={14}
+                    unoptimized
+                    className="size-[14px] shrink-0 object-contain md:hidden"
+                  />
                 </div>
               </TableCell>
             </TableRow>

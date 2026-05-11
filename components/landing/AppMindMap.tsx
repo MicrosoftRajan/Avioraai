@@ -1,18 +1,77 @@
 "use client";
 
+import type { CSSProperties, ReactNode } from "react";
 import { useMemo } from "react";
 import ReactFlow, {
   Background,
+  BezierEdge,
   Controls,
+  Handle,
   MiniMap,
+  Position,
+  SimpleBezierEdge,
+  SmoothStepEdge,
+  StepEdge,
+  StraightEdge,
   type Edge,
   type Node,
+  type NodeProps,
 } from "reactflow";
 
 import "reactflow/dist/style.css";
 
 const neoNode =
   "rounded-xl border-[3px] border-black bg-white px-4 py-3 shadow-[6px_6px_0_0_#000] text-black";
+
+/** Stable references — inline objects/functions each render trigger React Flow warning #002 */
+const FIT_VIEW_OPTIONS = { padding: 0.2 };
+const PRO_OPTIONS = { hideAttribution: true };
+const MINIMAP_STYLE: CSSProperties = {
+  border: "3px solid #000",
+  borderRadius: 12,
+  margin: 12,
+  boxShadow: "4px 4px 0 0 #000",
+};
+const CONTROLS_STYLE: CSSProperties = {
+  border: "3px solid #000",
+  borderRadius: 12,
+  margin: 12,
+  boxShadow: "4px 4px 0 0 #000",
+};
+
+function miniMapNodeColor(n: Node): string {
+  if (n.id === "auth") return "#fde047";
+  if (n.id === "home") return "#a5f3fc";
+  if (n.id === "companions") return "#fbcfe8";
+  if (n.id === "new") return "#d9f99d";
+  if (n.id === "subtitles") return "#fef08e";
+  if (n.id === "history") return "#a5b4fc";
+  if (n.id === "subscription") return "#fda4af";
+  return "#ffffff";
+}
+
+/** Handles required so edges resolve (RF #008); module-level component avoids RF #002 churn. */
+function MindMapNode({ data }: NodeProps) {
+  return (
+    <div className="relative h-full w-full">
+      <Handle type="target" position={Position.Left} id="target" />
+      <div className="h-full w-full">{data.label as ReactNode}</div>
+      <Handle type="source" position={Position.Right} id="source" />
+    </div>
+  );
+}
+
+const STABLE_NODE_TYPES = {
+  default: MindMapNode,
+};
+
+const STABLE_EDGE_TYPES = {
+  default: BezierEdge,
+  straight: StraightEdge,
+  step: StepEdge,
+  smoothstep: SmoothStepEdge,
+  simplebezier: SimpleBezierEdge,
+};
 
 export default function AppMindMap() {
   const nodes = useMemo<Node[]>(
@@ -196,45 +255,26 @@ export default function AppMindMap() {
       <ReactFlow
         nodes={nodes}
         edges={edges}
+        nodeTypes={STABLE_NODE_TYPES}
+        edgeTypes={STABLE_EDGE_TYPES}
         fitView
-        fitViewOptions={{ padding: 0.2 }}
+        fitViewOptions={FIT_VIEW_OPTIONS}
         nodesConnectable={false}
         nodesDraggable
         elementsSelectable
         panOnScroll
         zoomOnScroll
-        proOptions={{ hideAttribution: true }}
+        proOptions={PRO_OPTIONS}
       >
         <Background gap={18} color="#111" />
         <MiniMap
           pannable
           zoomable
-          nodeColor={(n) => {
-            if (n.id === "auth") return "#fde047";
-            if (n.id === "home") return "#a5f3fc";
-            if (n.id === "companions") return "#fbcfe8";
-            if (n.id === "new") return "#d9f99d";
-            if (n.id === "subtitles") return "#fef08e";
-            if (n.id === "history") return "#a5b4fc";
-            if (n.id === "subscription") return "#fda4af";
-            return "#ffffff";
-          }}
+          nodeColor={miniMapNodeColor}
           maskColor="rgba(255,255,245,0.65)"
-          style={{
-            border: "3px solid #000",
-            borderRadius: 12,
-            margin: 12,
-            boxShadow: "4px 4px 0 0 #000",
-          }}
+          style={MINIMAP_STYLE}
         />
-        <Controls
-          style={{
-            border: "3px solid #000",
-            borderRadius: 12,
-            margin: 12,
-            boxShadow: "4px 4px 0 0 #000",
-          }}
-        />
+        <Controls style={CONTROLS_STYLE} />
       </ReactFlow>
     </div>
   );

@@ -1,77 +1,35 @@
 # Aviora
 
-Aviora is a modern interview-prep and career companion for job seekers. The goal is to simulate a real interview environment, help you practice consistently, and improve faster with structured feedback.
+Aviora is a voice-enabled interview prep and learning companion: companion lessons, a dashboard for sessions, and **Interview Mode**—a timed mock interview flow with resume context, optional Supabase-backed history, and a post-session debrief.
 
 ---
 
-## Vision
+## Features
 
-- **Real interview environment**: timed rounds, realistic question flow, pressure-friendly UX, and role-based tracks.
-- **Personalized preparation**: questions adapt to your level, target role, and weak areas.
-- **Actionable feedback**: rubric-based scoring, strengths/weaknesses, and a concrete improvement plan after every session.
-- **One place for the journey**: practice, track progress, and iterate until you’re ready.
-
----
-
-## Roadmap (Phases)
-
-### Phase 0 — Foundation (Current)
-
-- Landing + onboarding experiences
-- Authentication and session handling
-- Reusable UI system and animations
-
-### Phase 1 — Core Practice Loop
-
-- Role/stack selection (e.g., Frontend / Backend / Fullstack)
-- Question bank with difficulty levels
-- Practice sessions with saved history
-
-### Phase 2 — Upcoming: Interview Mode (Real Interview Simulation)
-
-Interview Mode is designed to feel like a real recruiter/technical interview:
-
-- **Rounds**: HR / Technical / System Design (configurable by role)
-- **Realistic prompts**: curated questions + follow-ups + “why” questions
-- **Timer & pacing**: timeboxed answers, cooldown, and “think time”
-- **Evaluation rubric**: communication, correctness, depth, trade-offs, clarity
-- **Session report**: score breakdown + improvement plan + recommended next session
-- **Voice-first option (optional)**: interactive interview using web voice tooling
-
-### Phase 3 — Job-Seeker Toolkit
-
-- Resume / portfolio checklist
-- Job application tracker
-- Weekly plan generator (based on your target role and timeline)
-
-### Phase 4 — Insights & Growth
-
-- Progress analytics over time
-- Weak-area detection and targeted drills
-- Shareable “readiness report”
+- **Dashboard (signed-in)**: recent companion sessions, session cards, and CTA to create new companions.
+- **Interview Mode** (`/interview-mode`): profile + resume upload, setup, mock vs roadmap track choice, voice session via Vapi, and debrief.
+- **Auth**: Clerk (middleware protects non-public routes; public routes include `/`, `/landing`, sign-in/up).
+- **Data**: Companion data uses Supabase with the anon key + Clerk token; Interview Mode session rows use a **server-only** admin client when configured.
 
 ---
 
-## Tech Stack (Used in this project)
+## Tech stack
 
-- **Framework**: Next.js 15 (App Router) with Turbopack
-- **Language**: TypeScript
-- **UI**: Tailwind CSS v4, shadcn/ui-style patterns, Radix UI primitives
+- **Framework**: Next.js 16 (App Router), React 19, TypeScript
+- **Dev server**: Webpack by default (`npm run dev`); Turbopack optional (`npm run dev:turbo`)
+- **UI**: Tailwind CSS v4, Radix UI, Motion, Lottie, GSAP; 3D via Three.js / React Three Fiber where used
 - **Auth**: Clerk (`@clerk/nextjs`)
-- **Database / Backend services**: Supabase (`@supabase/supabase-js`)
-- **Forms & validation**: React Hook Form + Zod
-- **Animation**: GSAP, Motion, Lottie
-- **3D / Visuals**: Three.js + React Three Fiber + Drei
-- **Voice (web)**: Vapi (`@vapi-ai/web`)
-- **Tooling**: ESLint (Next.js config)
+- **Database**: Supabase (`@supabase/supabase-js`) — user-scoped client + optional service-role admin for Interview Mode writes
+- **Voice**: Vapi (`@vapi-ai/web`)
+- **Tooling**: ESLint (`eslint-config-next`)
 
 ---
 
-## Getting Started
+## Getting started
 
 ### Prerequisites
 
-- Node.js 18+ (recommended 20+)
+- Node.js 20+ recommended
 - npm
 
 ### Install
@@ -80,22 +38,41 @@ Interview Mode is designed to feel like a real recruiter/technical interview:
 npm install
 ```
 
-### Environment Variables
+### Environment variables
 
-Create a `.env.local` file (don’t commit it). Example:
+Create `.env.local` (never commit it). Values depend on which features you enable:
 
 ```bash
-# Clerk
+# Clerk — required for auth-protected areas
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
 CLERK_SECRET_KEY=
 
-# Supabase
+# Public site URL — SEO (metadataBase, sitemap, robots, JSON-LD). Use your production origin.
+NEXT_PUBLIC_SITE_URL=https://your-domain.com
+
+# Supabase — companions & general DB access (anon + Clerk JWT)
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 
-# Vapi (if using voice mode)
-NEXT_PUBLIC_VAPI_PUBLIC_KEY=
+# Supabase — Interview Mode server persistence (insert/update interview sessions)
+# If omitted, Interview Mode still works using browser sessionStorage only.
+SUPABASE_SERVICE_ROLE_KEY=
+
+# Vapi — voice Interview Mode session
+NEXT_PUBLIC_VAPI_WEB_TOKEN=
 ```
+
+Clerk image domains (e.g. `img.clerk.com`) are already allowed in `next.config.ts` for `next/image`.
+
+### Database (Interview Mode)
+
+Server actions write to Supabase table **`interview_mode_session`** when `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are set:
+
+- Row created after **Interview setup** (name, company, resume text, file name, duration).
+- **`mode`** updated when the user picks **Mock interview** vs **Roadmap** track.
+- **`debrief`** + **`ended_at`** updated when the session finishes.
+
+Ensure your table and policies match what `lib/actions/interview-mode.actions.ts` expects (`clerk_user_id`, `name`, `company`, `resume_text`, `resume_file_name`, `duration_minutes`, `mode`, `debrief`, `ended_at`, `updated_at`, etc.).
 
 ### Run locally
 
@@ -103,18 +80,61 @@ NEXT_PUBLIC_VAPI_PUBLIC_KEY=
 npm run dev
 ```
 
+Opens the Webpack dev server (recommended for stable HMR). For Turbopack:
+
+```bash
+npm run dev:turbo
+```
+
+If you hit **ChunkLoadError** or missing `.next/dev/...` manifests after clearing `.next`, stop the dev process, delete `.next`, and start again—avoid deleting `.next` while the server is running.
+
+### Production build
+
+```bash
+npm run build
+npm start
+```
+
 ---
 
-## Project Structure (high level)
+## NPM scripts
 
-- `app/`: Next.js App Router pages/routes
-- `components/`: shared + feature components
-- `lib/`: utilities and shared logic
-- `public/`: static assets (images/icons)
+| Script           | Description                    |
+| ---------------- | ------------------------------ |
+| `npm run dev`    | Dev server (Webpack)           |
+| `npm run dev:turbo` | Dev server (Turbopack)      |
+| `npm run build`  | Production build               |
+| `npm run start`  | Run production server          |
+| `npm run lint`   | ESLint                         |
 
 ---
 
-## Notes
+## Project layout
 
-- If you see assets under `public/readme/`, they can be used for README visuals (optional).
-- This README intentionally avoids including any real keys or secrets.
+| Path            | Purpose                                      |
+| --------------- | -------------------------------------------- |
+| `app/`          | App Router pages, API routes, layouts        |
+| `components/`   | Shared UI and feature modules (`interviewmode/`, `home/`, etc.) |
+| `lib/`          | Supabase clients, server actions, helpers    |
+| `public/`       | Static assets (icons, images)                |
+| `proxy.ts`      | Clerk middleware configuration               |
+
+Notable routes:
+
+- `/` — dashboard when signed in; marketing/landing flow when signed out
+- `/interview-mode` — Interview Mode landing + setup
+- `/interview-mode/session` — live voice session
+- `/interview-mode/debrief` — debrief screen after session
+
+---
+
+## Vision & roadmap
+
+Long-term goals include deeper question banks, rubric scoring, analytics, and job-seeker tooling (resume checklist, application tracker). Interview Mode’s voice loop, debrief, and optional Supabase persistence are the current foundation for that direction.
+
+---
+
+## Security notes
+
+- Keep **`SUPABASE_SERVICE_ROLE_KEY`** server-only (never `NEXT_PUBLIC_*`).
+- Do not commit `.env.local` or real keys. Optional screenshots live under `public/readme/` for docs only.

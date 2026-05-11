@@ -146,7 +146,7 @@ export function ChartPieDonutText() {
         <CardTitle>Pie Chart - Donut with Text</CardTitle>
         <CardDescription>January - June 2024</CardDescription>
       </CardHeader>
-      <CardContent className="flex-1 pb-0">
+      <CardContent className="min-h-[280px] pb-0">
         <ChartContainer
           config={donutChartConfig}
           className="mx-auto aspect-square h-[260px] w-full max-w-[320px]"

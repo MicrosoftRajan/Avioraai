@@ -49,11 +49,20 @@ function ChartContainer({
     <ChartContext.Provider value={{ config }}>
       <div
         data-slot="chart"
-        className={cn("w-full min-h-0 min-w-0", className)}
+        className={cn(
+          "relative w-full min-h-[200px] min-w-0 shrink-0 [&_.recharts-responsive-container]:min-h-[200px]",
+          className,
+        )}
         style={configToCssVars(config)}
       >
-        <ResponsiveContainer width="100%" height="100%">
-          {children as any}
+        <ResponsiveContainer
+          width="100%"
+          height="100%"
+          minWidth={48}
+          minHeight={200}
+          debounce={50}
+        >
+          {children as React.ReactElement}
         </ResponsiveContainer>
       </div>
     </ChartContext.Provider>

@@ -1,8 +1,9 @@
 'use client';
 
 import {useEffect, useRef, useState} from 'react'
-import {cn, configureAssistant, getSubjectColor} from "@/lib/utils";
-import {vapi} from "@/lib/vapi.sdk";
+import {cn, configureAssistant, getSubjectColor, getSubjectIconSrc} from "@/lib/utils";
+import { isBenignMeetingShutdown } from "@/lib/vapi-meeting-errors";
+import { vapi } from "@/lib/vapi.sdk";
 import Image from "next/image";
 import Lottie, {LottieRefCurrentProps} from "lottie-react";
 import soundwaves from '@/constants/soundwaves.json'
@@ -25,6 +26,10 @@ const CompanionComponent = ({ companionId, subject, topic, name, userName, userI
     const [subtitle, setSubtitle] = useState<string>("");
 
     const lottieRef = useRef<LottieRefCurrentProps>(null);
+    const callStatusRef = useRef(callStatus);
+    useEffect(() => {
+        callStatusRef.current = callStatus;
+    }, [callStatus]);
 
     useEffect(() => {
         if(lottieRef) {
@@ -56,7 +61,10 @@ const CompanionComponent = ({ companionId, subject, topic, name, userName, userI
         const onSpeechStart = () => setIsSpeaking(true);
         const onSpeechEnd = () => setIsSpeaking(false);
 
-        const onError = (error: Error) => console.log('Error', error);
+        const onError = (error: unknown) => {
+            if (isBenignMeetingShutdown(error)) return;
+            console.warn("[vapi]", error);
+        };
 
         vapi.on('call-start', onCallStart);
         vapi.on('call-end', onCallEnd);
@@ -72,6 +80,14 @@ const CompanionComponent = ({ companionId, subject, topic, name, userName, userI
             vapi.off('error', onError);
             vapi.off('speech-start', onSpeechStart);
             vapi.off('speech-end', onSpeechEnd);
+            const st = callStatusRef.current;
+            if (st === CallStatus.ACTIVE || st === CallStatus.CONNECTING) {
+                try {
+                    vapi.stop();
+                } catch {
+                    /* noop */
+                }
+            }
         }
     }, [companionId]);
 
@@ -139,15 +155,30 @@ const CompanionComponent = ({ companionId, subject, topic, name, userName, userI
                 <div className="companion-section">
                     <div className="companion-avatar" style={{ backgroundColor: getSubjectColor(subject)}}>
                         <div
-                            className={
-                            cn(
-                                'absolute transition-opacity duration-1000', callStatus === CallStatus.FINISHED || callStatus === CallStatus.INACTIVE ? 'opacity-1001' : 'opacity-0', callStatus === CallStatus.CONNECTING && 'opacity-100 animate-pulse'
-                            )
-                        }>
-                            <Image src={`/icons/${subject}.svg`} alt={subject} width={150} height={150} className="max-sm:w-fit" />
+                            className={cn(
+                                "absolute inset-0 flex items-center justify-center transition-opacity duration-1000",
+                                callStatus === CallStatus.FINISHED || callStatus === CallStatus.INACTIVE
+                                    ? "opacity-100"
+                                    : "opacity-0",
+                                callStatus === CallStatus.CONNECTING && "opacity-100 animate-pulse",
+                            )}
+                        >
+                            <Image
+                              src={getSubjectIconSrc(String(subject))}
+                              alt=""
+                              width={150}
+                              height={150}
+                              unoptimized
+                              className="size-[120px] object-contain max-sm:size-[56px]"
+                            />
                         </div>
 
-                        <div className={cn('absolute transition-opacity duration-1000', callStatus === CallStatus.ACTIVE ? 'opacity-100': 'opacity-0')}>
+                        <div
+                            className={cn(
+                                "absolute inset-0 flex items-center justify-center transition-opacity duration-1000",
+                                callStatus === CallStatus.ACTIVE ? "opacity-100" : "opacity-0",
+                            )}
+                        >
                             <Lottie
                                 lottieRef={lottieRef}
                                 animationData={soundwaves}
@@ -196,9 +227,11 @@ const CompanionComponent = ({ companionId, subject, topic, name, userName, userI
                         >
                             <Image
                                 src={isMuted ? '/icons/mic-off.svg' : '/icons/mic-on.svg'}
-                                alt="mic"
+                                alt=""
                                 width={36}
                                 height={36}
+                                unoptimized
+                                className="size-9 shrink-0 object-contain"
                             />
                             <p className="max-sm:hidden">
                                 {isMuted ? 'Mic off' : 'Mic on'}

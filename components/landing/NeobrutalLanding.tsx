@@ -1,14 +1,48 @@
 "use client";
 
-import { continueHomeHref } from "@/lib/first-visit";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import Link from "next/link";
-import { ArrowDown, ArrowRight, Sparkles } from "lucide-react";
+import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
+import { ArrowRight } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import AppMindMap from "@/components/landing/AppMindMap";
-import { ChartAreaAxes, ChartPieDonutText } from "@/components/landing/PerformanceCharts";
-import TypewriterText from "@/components/landing/TypewriterText";
+
+const ChartAreaAxes = dynamic(
+  () =>
+    import("@/components/landing/PerformanceCharts").then((m) => m.ChartAreaAxes),
+  {
+    ssr: false,
+    loading: () => (
+      <div
+        className="min-h-[260px] w-full rounded-xl border-[3px] border-black bg-neutral-100 shadow-[6px_6px_0_0_#000]"
+        aria-hidden
+      />
+    ),
+  },
+);
+
+const ChartPieDonutText = dynamic(
+  () =>
+    import("@/components/landing/PerformanceCharts").then(
+      (m) => m.ChartPieDonutText,
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <div
+        className="min-h-[280px] w-full rounded-xl border-[3px] border-black bg-neutral-100 shadow-[6px_6px_0_0_#000]"
+        aria-hidden
+      />
+    ),
+  },
+);
+import { LightRays } from "@/components/ui/light-rays";
+import { MorphingText } from "@/components/ui/morphing-text";
+import { ComicText } from "@/components/ui/comic-text";
+import { InteractiveHoverButton } from "@/components/ui/interactive-hover-button";
+import { SparklesText } from "@/components/ui/sparkles-text";
 
 if (typeof window !== "undefined") {
   gsap.registerPlugin(ScrollTrigger);
@@ -79,11 +113,9 @@ const faq = [
 ] as const;
 
 export default function NeobrutalLanding() {
+  const router = useRouter();
   const rootRef = useRef<HTMLDivElement | null>(null);
   const heroSectionRef = useRef<HTMLElement | null>(null);
-  const scrollHintRef = useRef<HTMLDivElement | null>(null);
-  const heroUnderlineRef = useRef<HTMLSpanElement | null>(null);
-
   const [testimonialIndex, setTestimonialIndex] = useState(0);
   const testimonialCount = testimonials.length;
   const stackLayers = [2, 1, 0] as const; // back → front draw order
@@ -118,38 +150,6 @@ export default function NeobrutalLanding() {
           });
         }
 
-        const heroArt = root.querySelector(".landing-hero-art");
-        if (heroArt) {
-          gsap.from(heroArt, {
-            opacity: 0,
-            x: 40,
-            duration: 0.75,
-            ease: "power3.out",
-            delay: 0.15,
-          });
-        }
-
-        if (scrollHintRef.current) {
-          gsap.to(scrollHintRef.current, {
-            y: 10,
-            duration: 0.9,
-            ease: "power1.inOut",
-            repeat: -1,
-            yoyo: true,
-          });
-        }
-
-        if (heroUnderlineRef.current) {
-          gsap.to(heroUnderlineRef.current, {
-            scrollTrigger: {
-              trigger: heroUnderlineRef.current,
-              start: "top 80%",
-              toggleActions: "play none none none",
-            },
-            onStart: () => heroUnderlineRef.current?.setAttribute("data-underline", "on"),
-            duration: 0.01,
-          });
-        }
       }
 
       const revealEls = root.querySelectorAll<HTMLElement>("[data-gsap-reveal]");
@@ -244,126 +244,53 @@ export default function NeobrutalLanding() {
   }, [testimonialIndex]);
 
   return (
-    <div ref={rootRef} className="w-full bg-[#fffef5] text-black tracking-wide">
+    <div
+      ref={rootRef}
+      className="relative isolate w-full overflow-x-hidden bg-transparent text-black tracking-wide"
+    >
+      <div
+        className="pointer-events-none fixed inset-0 z-0 overflow-hidden"
+        aria-hidden
+      >
+        <div className="relative h-full min-h-[100dvh] w-full">
+          <LightRays
+            className="rounded-none"
+            count={10}
+            color="rgba(165, 210, 255, 0.42)"
+            blur={44}
+            speed={14}
+            length="120vh"
+          />
+        </div>
+      </div>
+
+      <div className="relative z-10">
       {/* Hero */}
       <section
         ref={heroSectionRef}
-        className="relative flex min-h-[100dvh] flex-col border-b-[3px] border-black bg-[#fde047]"
+        className="relative flex min-h-[100dvh] flex-col overflow-hidden border-b-[3px] border-black bg-transparent"
       >
-        {/* Cinematic blobs */}
-        <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
-          <div className="absolute -left-24 top-14 size-[260px] rounded-full border-[3px] border-black bg-[#a5f3fc] opacity-35 blur-[0.5px]" />
-          <div className="absolute -right-28 top-40 size-[320px] rounded-full border-[3px] border-black bg-[#fbcfe8] opacity-30 blur-[0.5px]" />
-          <div className="absolute left-1/3 bottom-10 size-[220px] rounded-full border-[3px] border-black bg-[#d9f99d] opacity-25 blur-[0.5px]" />
-        </div>
-
-        <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col items-center justify-center gap-10 px-4 py-16 pt-8 md:flex-row md:items-center md:justify-between md:gap-12">
-          <div className="landing-hero-intro max-w-xl text-center md:text-left">
-            <p
-              className={`mb-4 inline-flex items-center gap-2 ${neoBorder} ${neoShadowSm} bg-white px-4 py-2 text-sm font-bold uppercase`}
-            >
-              <span className="inline-block size-2 rounded-full bg-black" />
-              Aviora • Social Media Management
-            </p>
-            <h1 className="landing-hero-title will-change-transform text-4xl font-extrabold leading-tight md:text-5xl lg:text-6xl">
-              <TypewriterText text="Maximize your social media presence—fast." />
-            </h1>
-            <p className="mt-6 text-lg font-semibold text-black/80 md:text-xl">
-              A neobrutal AI platform that{" "}
-              <span ref={heroUnderlineRef} className="neo-underline">
-                plans, analyzes, and assists
-              </span>
-              —24/7.
-            </p>
-            <div className="mt-10 flex flex-wrap items-center justify-center gap-4 md:justify-start">
-              <Link
-                href="/sign-in"
-                data-neo-lift
-                className={`neo-press inline-flex items-center gap-2 bg-black px-6 py-3 text-sm font-bold uppercase text-white ${neoBorder} ${neoShadow}`}
-              >
-                Get in touch
-                <ArrowRight className="size-4" aria-hidden />
-              </Link>
-              <a
-                href="#advanced"
-                data-neo-lift
-                className={`neo-press inline-flex items-center gap-2 bg-white px-6 py-3 text-sm font-bold uppercase ${neoBorder} ${neoShadowSm}`}
-              >
-                Scroll down
-                <ArrowDown className="size-4" aria-hidden />
-              </a>
-              <Link
-                href={continueHomeHref}
-                data-neo-lift
-                className={`neo-press inline-flex items-center gap-2 bg-[#86efac] px-6 py-3 text-sm font-bold uppercase ${neoBorder} ${neoShadowSm}`}
-              >
-                Continue to app
-                <ArrowRight className="size-4" aria-hidden />
-              </Link>
-            </div>
-          </div>
-
-          <div
-            data-neo-lift
-            className="landing-hero-art relative w-full max-w-md overflow-hidden bg-[#fde047]"
-          >
-            <div
-              className={`relative overflow-hidden ${neoBorder} ${neoShadow} bg-white`}
-            >
-              <div className="flex min-h-[320px] flex-col justify-between gap-6 p-7 md:min-h-[360px]">
-                <div className="space-y-3">
-                  <div className="inline-flex items-center gap-2 border-[3px] border-black bg-[#fde047] px-3 py-2 text-xs font-black uppercase tracking-widest">
-                    <Sparkles className="size-4" aria-hidden />
-                    Aviora
-                  </div>
-                  <h3 className="text-2xl font-extrabold leading-tight">
-                    Your always-on social media copilot.
-                  </h3>
-                  <p className="text-sm font-semibold text-black/75">
-                    Analytics, reporting, and recommendations—delivered in a
-                    bold, simple flow.
-                  </p>
-                </div>
-
-                <div className="grid gap-3">
-                  {[
-                    "Scroll-trigger insights",
-                    "Neobrutal UI + micro-interactions",
-                    "24/7 personal assistance",
-                  ].map((t) => (
-                    <div
-                      key={t}
-                      className="flex items-center justify-between gap-3 border-[3px] border-black bg-[#a5f3fc] px-4 py-3 text-xs font-black uppercase tracking-widest"
-                    >
-                      <span className="truncate">{t}</span>
-                      <ArrowRight className="size-4 shrink-0" aria-hidden />
-                    </div>
-                  ))}
-                </div>
-              </div>
+        <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-1 flex-col items-center justify-center px-4 py-16 pt-8">
+          <div className="landing-hero-intro w-full max-w-5xl text-center">
+            <div className="landing-hero-title will-change-transform">
+              <MorphingText
+                texts={[
+                  "WELCOME TO AVIORA",
+                  "PODCAST",
+                  "INTERVIEW MODE",
+                  "LEARNING MODE",
+                ]}
+                className="mx-auto h-auto min-h-[5rem] w-full max-w-5xl px-2 text-center font-extrabold tracking-tight text-balance text-3xl leading-none filter-[url(#threshold)_blur(0.6px)] sm:text-4xl md:h-auto md:min-h-[7rem] md:text-5xl lg:min-h-[8.5rem] lg:text-6xl xl:text-7xl"
+              />
             </div>
           </div>
         </div>
-
-        <a
-          href="#advanced"
-          className="absolute bottom-8 left-1/2 flex -translate-x-1/2 flex-col items-center gap-2 text-xs font-bold uppercase"
-          aria-label="Scroll down"
-        >
-          <div
-            ref={scrollHintRef}
-            className={`flex items-center gap-2 ${neoBorder} ${neoShadowSm} bg-white px-4 py-2`}
-          >
-            <span>Scroll Down</span>
-            <ArrowDown className="size-6" />
-          </div>
-        </a>
       </section>
 
       {/* Advanced Analytics and Reporting */}
       <section
         id="advanced"
-        className="border-b-[3px] border-black bg-white px-4 py-24 md:py-32"
+        className="border-b-[3px] border-black bg-transparent px-4 py-24 md:py-32"
       >
         <div className="mx-auto max-w-6xl">
           <p
@@ -417,11 +344,11 @@ export default function NeobrutalLanding() {
             ))}
           </div>
 
-          <div className="mt-10 grid gap-6 lg:grid-cols-2">
-            <div data-gsap-reveal data-neo-lift>
+          <div className="mt-10 grid min-w-0 gap-6 lg:grid-cols-2">
+            <div className="min-w-0" data-gsap-reveal data-neo-lift>
               <ChartAreaAxes />
             </div>
-            <div data-gsap-reveal data-neo-lift>
+            <div className="min-w-0" data-gsap-reveal data-neo-lift>
               <ChartPieDonutText />
             </div>
           </div>
@@ -431,7 +358,7 @@ export default function NeobrutalLanding() {
       {/* ChatGPT / Deepseek / Gemini */}
       <section
         id="models"
-        className="border-b-[3px] border-black bg-[#fbcfe8] px-4 py-24 md:py-32"
+        className="border-b-[3px] border-black bg-transparent px-4 py-24 md:py-32"
       >
         <div className="mx-auto max-w-6xl">
           <div className="mb-12 text-center" data-gsap-reveal>
@@ -490,7 +417,7 @@ export default function NeobrutalLanding() {
       {/* Vision & AIM */}
       <section
         id="vision"
-        className="border-b-[3px] border-black bg-[#d9f99d] px-4 py-24 md:py-32"
+        className="border-b-[3px] border-black bg-transparent px-4 py-24 md:py-32"
       >
         <div className="mx-auto max-w-6xl">
           <div className="mb-12 text-center" data-gsap-reveal>
@@ -544,7 +471,7 @@ export default function NeobrutalLanding() {
       {/* App mindmap */}
       <section
         id="mindmap"
-        className="border-b-[3px] border-black bg-[#fef3c7] px-4 py-24 md:py-32"
+        className="border-b-[3px] border-black bg-transparent px-4 py-24 md:py-32"
       >
         <div className="mx-auto max-w-6xl">
           <div className="mb-12 text-center" data-gsap-reveal>
@@ -571,7 +498,7 @@ export default function NeobrutalLanding() {
       {/* Stats */}
       <section
         id="stats"
-        className="border-b-[3px] border-black bg-[#a5f3fc] px-4 py-24 md:py-32"
+        className="border-b-[3px] border-black bg-transparent px-4 py-24 md:py-32"
       >
         <div className="mx-auto max-w-6xl">
           <div className="mb-12 text-center" data-gsap-reveal>
@@ -626,7 +553,7 @@ export default function NeobrutalLanding() {
       {/* Testimonials */}
       <section
         id="testimonials"
-        className="border-b-[3px] border-black bg-[#d9f99d] px-4 py-24 md:py-32"
+        className="border-b-[3px] border-black bg-transparent px-4 py-24 md:py-32"
       >
         <div className="mx-auto max-w-6xl">
           <div className="mb-14 text-center">
@@ -731,7 +658,7 @@ export default function NeobrutalLanding() {
       {/* FAQ */}
       <section
         id="faq"
-        className="border-b-[3px] border-black bg-white px-4 py-24 md:py-32"
+        className="border-b-[3px] border-black bg-transparent px-4 py-24 md:py-32"
       >
         <div className="mx-auto max-w-5xl">
           <div className="mb-12 text-center" data-gsap-reveal>
@@ -765,84 +692,30 @@ export default function NeobrutalLanding() {
       </section>
 
       {/* Moto + nested sign-in card */}
-      <section id="moto" className="bg-[#fde047] px-4 py-24 md:py-32">
-        <div className="mx-auto max-w-5xl">
-          <div
-            data-gsap-reveal
-            data-neo-lift
-            className={`${neoBorder} ${neoShadow} bg-white p-8 md:p-12`}
+      <section
+        id="moto"
+        className="relative overflow-hidden bg-transparent px-4 py-24 md:py-32"
+      >
+        <div
+          data-gsap-reveal
+          className="relative z-10 mx-auto flex max-w-4xl flex-col items-center justify-center gap-8 text-center md:gap-12"
+        >
+          <SparklesText className="text-balance text-4xl uppercase tracking-tight text-black sm:text-5xl md:text-6xl lg:text-7xl">
+            SIGNUP NOW
+          </SparklesText>
+          <ComicText fontSize={3.5} className="max-w-full px-2">
+            TO EXPLORE
+          </ComicText>
+          <InteractiveHoverButton
+            type="button"
+            className={`rounded-none border-[3px] border-black px-8 py-3 text-base font-black uppercase tracking-wide ${neoShadowSm}`}
+            onClick={() => router.push("/sign-up")}
           >
-            <div className="grid gap-10 md:grid-cols-2 md:items-center">
-              <div className="space-y-4">
-                <p className="text-xs font-black uppercase tracking-widest text-black/70">
-                  Our Moto
-                </p>
-                <h2 className="text-3xl font-extrabold md:text-4xl">
-                  Bold ideas. Brutal clarity. Real results.
-                </h2>
-                <p className="text-sm font-semibold leading-relaxed text-black/80">
-                  Aviora is built to help you ship faster, learn from your data,
-                  and stay consistent—without drowning in tools.
-                </p>
-                <div className="flex flex-wrap items-center gap-3 pt-2">
-                  <Link
-                    href={continueHomeHref}
-                    data-neo-lift
-                    className={`neo-press inline-flex items-center gap-2 bg-[#86efac] px-6 py-3 text-sm font-bold uppercase ${neoBorder} ${neoShadowSm}`}
-                  >
-                    Enter app
-                    <ArrowRight className="size-4" aria-hidden />
-                  </Link>
-                  <a
-                    href="#advanced"
-                    data-neo-lift
-                    className={`neo-press inline-flex items-center gap-2 bg-white px-6 py-3 text-sm font-bold uppercase ${neoBorder} ${neoShadowSm}`}
-                  >
-                    Back to top
-                    <ArrowDown className="size-4" aria-hidden />
-                  </a>
-                </div>
-              </div>
-
-              <div
-                data-neo-lift
-                className={`${neoBorder} ${neoShadowSm} bg-[#a5f3fc] p-6`}
-              >
-                <div className="mb-4 inline-flex items-center gap-2 border-[3px] border-black bg-white px-3 py-2 text-xs font-black uppercase tracking-widest">
-                  Sign In
-                  <ArrowRight className="size-4" aria-hidden />
-                </div>
-                <div data-neo-lift className={`${neoBorder} ${neoShadowSm} bg-white p-6`}>
-                  <p className="text-sm font-extrabold">
-                    Start your workspace in minutes.
-                  </p>
-                  <p className="mt-2 text-sm font-semibold text-black/75">
-                    Connect your accounts, get insights, and let Aviora assist 24/7.
-                  </p>
-                  <div className="mt-5 flex flex-col gap-3">
-                    <Link
-                      href="/sign-in"
-                      data-neo-lift
-                      className={`neo-press inline-flex w-full items-center justify-center gap-2 bg-black px-6 py-3 text-sm font-bold uppercase text-white ${neoBorder} ${neoShadowSm}`}
-                    >
-                      Sign in
-                      <ArrowRight className="size-4" aria-hidden />
-                    </Link>
-                    <Link
-                      href="/sign-up"
-                      data-neo-lift
-                      className={`neo-press inline-flex w-full items-center justify-center gap-2 bg-white px-6 py-3 text-sm font-bold uppercase ${neoBorder} ${neoShadowSm}`}
-                    >
-                      Create account
-                      <ArrowRight className="size-4" aria-hidden />
-                    </Link>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+            Sign UP Now
+          </InteractiveHoverButton>
         </div>
       </section>
+      </div>
     </div>
   );
 }

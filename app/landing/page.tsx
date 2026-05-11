@@ -2,8 +2,9 @@ import NeobrutalLanding from "@/components/landing/NeobrutalLanding";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Aviora — Landing",
-  description: "Neobrutalist product landing: goals, demo, metrics, and stories.",
+  title: "Product landing",
+  description:
+    "Explore Aviora: interview practice, voice AI companions, goals, and product story.",
 };
 
 export default function LandingRoutePage() {

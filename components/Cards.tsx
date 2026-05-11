@@ -18,7 +18,13 @@ const Cards = ({id, name, topic, subject, color, duration, actionLabel = 'Launch
         <div className='flex justify-between items-center'>
             <div className='subject-badge'>{subject}</div>
             <button className='companion-bookmark'>
-                <Image src="/icons/bookmark.svg" alt='bookmark' width={13} height={15}/>
+                <Image
+                  src="/icons/bookmark.svg"
+                  alt="bookmark"
+                  width={13}
+                  height={15}
+                  className="h-auto w-auto max-w-none shrink-0"
+                />
             </button>
         </div>
 
@@ -28,7 +34,13 @@ const Cards = ({id, name, topic, subject, color, duration, actionLabel = 'Launch
 
         <p className='text-sm '>{topic}</p>
         <div className='flex items-center gap-2'>
-            <Image src="/icons/clock.svg" alt='duration' width={13.5} height={13.5}/>
+            <Image
+              src="/icons/clock.svg"
+              alt="duration"
+              width={14}
+              height={14}
+              className="h-auto w-auto max-w-none shrink-0"
+            />
             <p className='text-sm'>{duration} minutes</p>
         </div>
 

@@ -44,7 +44,7 @@ export default async function HomePage() {
 
       <section className="home-section">
         {!user ? (
-          <div className="companion-list w-2/3 max-lg:w-full rounded-lg border border-border bg-muted/30 p-8">
+          <div className="companion-list w-2/3 max-lg:w-full rounded-lg border-0 bg-muted/30 p-8 shadow-none">
             <h2 className="font-bold text-2xl">Recently Completed Sessions</h2>
             <p className="mt-2 text-muted-foreground">
               Sign in to see lessons you have finished and pick up where you left off.
