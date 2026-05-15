@@ -10,6 +10,7 @@ import InterviewForm from "./InterviewForm";
 import SetupEnvironment from "./SetupEnvironment";
 import type { InterviewProfile } from "./types";
 import { persistInterviewSessionStart } from "@/lib/actions/interview-mode.actions";
+import { pickInterviewer } from "@/lib/interview-interviewer";
 import { INTERVIEW_SESSION_KEY } from "@/lib/interview-session-storage";
 import {
   useCallback,
@@ -70,6 +71,11 @@ export default function InterviewLanding() {
       setProfile(data);
       let supabaseSessionId: string | undefined;
 
+      const interviewer =
+        data.roundStage === "screening"
+          ? null
+          : pickInterviewer(data.roundStage, data.company);
+
       const sessionPayload = {
         name: data.name,
         company: data.company,
@@ -77,6 +83,12 @@ export default function InterviewLanding() {
         resumeFileName: data.resumeFile?.name ?? "resume",
         durationMinutes: data.durationMinutes,
         roundStage: data.roundStage,
+        ...(interviewer
+          ? {
+              interviewerName: interviewer.name,
+              interviewerTitle: interviewer.title,
+            }
+          : {}),
         ...(data.jobDescription?.trim()
           ? { jobDescription: data.jobDescription.trim() }
           : {}),

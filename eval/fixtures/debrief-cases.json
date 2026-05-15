@@ -1,0 +1,61 @@
+[
+  {
+    "id": "mock-includes-company",
+    "mode": "mock",
+    "payload": {
+      "mode": "mock",
+      "name": "Alex",
+      "company": "Stripe",
+      "durationMinutes": 30,
+      "messages": [
+        { "role": "assistant", "content": "Tell me about a scaling challenge." },
+        { "role": "user", "content": "We optimized API latency and improved database indexing for checkout." }
+      ],
+      "weaknessHints": [],
+      "codingQuestion": null,
+      "endedAt": 0,
+      "roundStage": "technical"
+    },
+    "expectCompanyInHeadline": true,
+    "minBullets": 3
+  },
+  {
+    "id": "coding-prompt-surfaced",
+    "mode": "mock",
+    "payload": {
+      "mode": "mock",
+      "name": "Jordan",
+      "company": "Google",
+      "durationMinutes": 45,
+      "messages": [
+        { "role": "user", "content": "I implemented a hash map for the coding question." }
+      ],
+      "weaknessHints": [],
+      "codingQuestion": "Implement LRU cache with O(1) operations",
+      "endedAt": 0,
+      "roundStage": "technical"
+    },
+    "expectCodingAdvice": true,
+    "minBullets": 4
+  },
+  {
+    "id": "roadmap-four-weeks",
+    "mode": "roadmap",
+    "payload": {
+      "mode": "roadmap",
+      "name": "Sam",
+      "company": "Meta",
+      "durationMinutes": 30,
+      "messages": [
+        { "role": "user", "content": "I'm not sure how to answer system design questions." }
+      ],
+      "weaknessHints": ["Confidence under uncertainty"],
+      "codingQuestion": null,
+      "endedAt": 0,
+      "roundStage": "technical"
+    },
+    "expectWeekCount": 4,
+    "expectConfidenceAdvice": true,
+    "minBullets": 3
+  }
+]

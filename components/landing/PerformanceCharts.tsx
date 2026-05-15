@@ -47,7 +47,7 @@ export function ChartAreaAxes() {
         <CardDescription>Showing total visitors for the last 6 months</CardDescription>
       </CardHeader>
       <CardContent>
-        <ChartContainer config={areaChartConfig} className="h-[260px] w-full">
+        <ChartContainer config={areaChartConfig} className="w-full" height={260}>
           <AreaChart
             accessibilityLayer
             data={areaChartData}
@@ -149,7 +149,8 @@ export function ChartPieDonutText() {
       <CardContent className="min-h-[280px] pb-0">
         <ChartContainer
           config={donutChartConfig}
-          className="mx-auto aspect-square h-[260px] w-full max-w-[320px]"
+          className="mx-auto w-full max-w-[320px]"
+          height={260}
         >
           <PieChart>
             <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />

@@ -13,7 +13,8 @@ import { Backlight } from "@/components/ui/backlight";
 import { cn } from "@/lib/utils";
 import { motion } from "motion/react";
 import { useRouter } from "next/navigation";
-import { useCallback, useState } from "react";
+import { pickInterviewer } from "@/lib/interview-interviewer";
+import { useCallback, useMemo, useState } from "react";
 
 export default function InterviewCards({
   className,
@@ -24,6 +25,28 @@ export default function InterviewCards({
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
+
+  const interviewer = useMemo(() => {
+    if (!profile || profile.roundStage === "screening") return null;
+    try {
+      const raw = sessionStorage.getItem(INTERVIEW_SESSION_KEY);
+      if (raw) {
+        const data = JSON.parse(raw) as {
+          interviewerName?: string;
+          interviewerTitle?: string;
+          company?: string;
+          roundStage?: string;
+        };
+        if (data.interviewerName && data.interviewerTitle) {
+          return { name: data.interviewerName, title: data.interviewerTitle };
+        }
+      }
+    } catch {
+      /* noop */
+    }
+    const picked = pickInterviewer(profile.roundStage, profile.company);
+    return { name: picked.name, title: picked.title };
+  }, [profile]);
 
   const choose = useCallback(
     async (mode: InterviewModeType) => {
@@ -75,6 +98,14 @@ export default function InterviewCards({
             </span>
             <span className="text-white/60">·</span>
             <span className="text-white/90">{profile.durationMinutes} min</span>
+            {interviewer ? (
+              <>
+                <span className="text-white/60">·</span>
+                <span className="text-white/90">
+                  with {interviewer.name}
+                </span>
+              </>
+            ) : null}
           </span>
         </p>
       ) : null}

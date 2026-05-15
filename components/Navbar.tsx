@@ -15,10 +15,11 @@ const Navbar = () => {
       <Link href="/">
         <div className="flex items-center gap-2.5 cursor-pointer">
           <Image
-            src="/images/logo.svg"
-            alt="Aviora"
-            width={46}
-            height={44}
+            src="/images/favicon-32x32.png"
+            alt="Aviora Logo"
+            width={32}
+            height={32}
+            className="h-8 w-8"
             priority
           />
         </div>

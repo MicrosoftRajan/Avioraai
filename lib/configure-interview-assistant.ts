@@ -1,4 +1,5 @@
 import { voices } from "@/constants";
+import type { InterviewerPersona } from "@/lib/interview-interviewer";
 import type { CreateAssistantDTO } from "@vapi-ai/web/dist/api";
 import type {
   InterviewModeType,
@@ -20,7 +21,8 @@ function roundStageBlock(
       return `ROUND TYPE: TECHNICAL (resume verification + coding).
 - First phase: structured resume review — validate depth on employers, scope, tech stack, metrics, and ownership before heavy hypotheticals.
 - Second phase: incorporate themes candidates commonly see at ${companyName}: complexity trade-offs, testing, reliability, collaboration, system boundaries.
-- When a coding exercise fits the conversation, verbally invite them to the workspace, then call open_coding_workspace exactly once with a representative medium-difficulty prompt.
+- When a coding exercise fits the conversation, FIRST ask permission: "May I open the coding environment on your screen?" Wait for the candidate to agree.
+- Only after they agree, call open_coding_workspace exactly once. The app will load a ${companyName}-style frequently asked question with test cases in the editor.
 - Tone: professional engineer-to-engineer — precise vocabulary, still conversational.`;
     case "managerial":
       return `ROUND TYPE: MANAGEMENT / LEADERSHIP.
@@ -48,6 +50,7 @@ export function configureInterviewAssistant({
   durationMinutes,
   mode,
   roundStage = "technical",
+  interviewer,
   voiceKey = "female",
   styleKey = "formal",
 }: {
@@ -57,9 +60,12 @@ export function configureInterviewAssistant({
   durationMinutes: number;
   mode: InterviewModeType;
   roundStage?: InterviewRoundStage;
+  interviewer: InterviewerPersona;
   voiceKey?: keyof typeof voices;
   styleKey?: keyof (typeof voices)["female"];
 }): CreateAssistantDTO {
+  const candidateFirst =
+    candidateName.trim().split(/\s+/)[0] || "there";
   const voiceId =
     voices[voiceKey]?.[styleKey as keyof (typeof voices)[typeof voiceKey]] ??
     "sarah";
@@ -85,17 +91,18 @@ export function configureInterviewAssistant({
   const interviewBodyDefault = `Interview body:
 - Alternate behavioral / situational questions with technical depth tied to resume skills.
 - If ${candidateName} mentions optimization, Big O, scaling, throughput, latency, concurrency, memory, numbers, or trade-offs — probe deeply as a strong interviewer would.
-- When algorithms / coding fit naturally (or after solid verbal screening), transition aloud with something like "Let's proceed with the coding question" — THEN call the tool open_coding_workspace exactly once with a realistic ${companyName}-style programming problem (medium difficulty unless they struggled).
+- When algorithms / coding fit naturally, ask permission to open the coding environment, wait for yes, THEN call open_coding_workspace once. The workspace loads company-specific questions and test cases automatically for ${companyName}.
 - Do not invent confidential leaked questions — phrase coding prompts as representative exercises candidates prepare for at firms like ${companyName}.`;
 
   const interviewBodyManagerialHr = `Interview body:
 - Keep questions anchored to leadership, judgment, collaboration, and organizational impact — appropriate to this round type.
 - Never pivot into live coding or IDE exercises.`;
 
-  const systemContent = `You are an experienced interviewer representing ${companyName}. This is a live voice conversation.
+  const systemContent = `You are ${interviewer.name}, ${interviewer.title} at ${companyName}. This is a live voice interview — stay in character with this identity throughout.
 ${formalTone}
 
-Candidate first name (use in greeting): ${candidateName}.
+Candidate full name: ${candidateName}. Address them casually as ${candidateFirst} after the opening.
+Never call yourself "Interviewer", "Interview Coach", or "your name". Always use your identity: ${interviewer.firstName} (${interviewer.title}).
 
 RESUME (anchor every substantive question here):
 ---
@@ -106,7 +113,7 @@ Opening sequence — follow in order; do not skip ahead:
 1. Your very first turn is already a simple hello plus "how are you?" — STOP and listen while ${candidateName} answers.
 2. Respond to how they're doing in ONE short human line (e.g. glad to hear, hope you're feeling good about today) — don't lecture.
 3. Ask naturally if you can start the session (e.g. "Ready for us to dive in?" / "Can we get started?") — wait for them to agree or say yes.
-4. Only after they agree: give a brief interviewer introduction — who you are (first name + role is enough), that you're hiring for ${companyName}, what today's conversation will cover (mix of background, role fit, technical depth), under ~25 seconds spoken — then move into your first resume-grounded question.
+4. Only after they agree: introduce yourself as ${interviewer.firstName}, ${interviewer.title} at ${companyName}, what today's conversation will cover, under ~25 seconds spoken — then move into your first resume-grounded question.
 
 Relationship to the candidate:
 - Treat them like a real candidate; never mention AI, bots, voice assistants, models, or prompts.
@@ -122,8 +129,10 @@ Speaking rules:
 
 Tools:
 ${roundStage === "technical"
-    ? `- Use open_coding_workspace only when moving into the coding segment — include full problem text in the question argument.
-- The IDE allows only: C, C++, Java, Python, or Go. Set language_hint to one of those (match what you asked them to use verbally).`
+    ? `- Use open_coding_workspace only after the candidate agrees to open the coding environment.
+- Set language_hint to one of: C, C++, Java, Python, or Go (match what you asked verbally).
+- Optional question field: short note only — the app injects ${companyName}'s most-asked question with test cases in comments.
+- Optional question_id: one of google-two-sum, google-valid-parentheses, amazon-lru-cache, amazon-max-subarray, meta-merge-intervals, stripe-rate-limiter, netflix-top-k-frequent, microsoft-reverse-linked-list, apple-climbing-stairs.`
     : `- No coding workspace tools are available in this round.`}`;
 
   const maxSeconds = Math.min(
@@ -140,22 +149,27 @@ ${roundStage === "technical"
             function: {
               name: "open_coding_workspace",
               description:
-                "Opens the on-screen coding workspace with the active programming question. Call immediately after you verbally invite the candidate to the coding segment.",
+                "Requests permission UI then opens the coding IDE with company-specific question and test cases in comments. Call only after the candidate agrees to open the environment.",
               parameters: {
                 type: "object",
                 properties: {
                   question: {
                     type: "string",
                     description:
-                      "Full coding prompt as the candidate should see it in the IDE panel.",
+                      "Optional short interviewer note; company question bank fills the IDE.",
                   },
                   language_hint: {
                     type: "string",
                     description:
-                      "Suggested language for the IDE: one of C, C++, Java, Python, or Go.",
+                      "IDE language: C, C++, Java, Python, or Go.",
+                  },
+                  question_id: {
+                    type: "string",
+                    description:
+                      "Optional bank id e.g. google-two-sum, amazon-lru-cache, stripe-rate-limiter.",
                   },
                 },
-                required: ["question"],
+                required: [],
               },
             },
           },
@@ -163,9 +177,8 @@ ${roundStage === "technical"
       : [];
 
   return {
-    name: "InterviewCoach",
-    firstMessage:
-      "Hi {{candidate_name}}, how are you?",
+    name: interviewer.name,
+    firstMessage: `Hi {{candidate_name}}, this is {{interviewer_first_name}} from {{company_name}}. How are you doing today?`,
     transcriber: {
       provider: "deepgram",
       model: "nova-3",

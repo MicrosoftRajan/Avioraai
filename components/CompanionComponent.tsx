@@ -3,7 +3,7 @@
 import {useEffect, useRef, useState} from 'react'
 import {cn, configureAssistant, getSubjectColor, getSubjectIconSrc} from "@/lib/utils";
 import { isBenignMeetingShutdown } from "@/lib/vapi-meeting-errors";
-import { vapi } from "@/lib/vapi.sdk";
+import { safeVapiStart, safeVapiStop, vapi } from "@/lib/vapi.sdk";
 import Image from "next/image";
 import Lottie, {LottieRefCurrentProps} from "lottie-react";
 import soundwaves from '@/constants/soundwaves.json'
@@ -82,11 +82,7 @@ const CompanionComponent = ({ companionId, subject, topic, name, userName, userI
             vapi.off('speech-end', onSpeechEnd);
             const st = callStatusRef.current;
             if (st === CallStatus.ACTIVE || st === CallStatus.CONNECTING) {
-                try {
-                    vapi.stop();
-                } catch {
-                    /* noop */
-                }
+                safeVapiStop();
             }
         }
     }, [companionId]);
@@ -106,13 +102,13 @@ const CompanionComponent = ({ companionId, subject, topic, name, userName, userI
             serverMessages: [],
         }
 
-        // @ts-expect-error vapi.start accepts assistant config + overrides
-        vapi.start(configureAssistant(voice, style), assistantOverrides)
+        // @ts-expect-error Vapi start accepts assistant config + overrides
+        safeVapiStart(configureAssistant(voice, style), assistantOverrides)
     }
 
     const handleDisconnect = () => {
         setCallStatus(CallStatus.FINISHED)
-        vapi.stop()
+        safeVapiStop()
     }
 
     const downloadSubtitlesPdf = () => {

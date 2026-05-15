@@ -1,5 +1,6 @@
 "use client";
 
+import CodingEnvironmentGate from "@/components/interviewmode/CodingEnvironmentGate";
 import InterviewCodingWorkspace from "@/components/interviewmode/InterviewCodingWorkspace";
 import { INTERVIEW_ROUND_OPTIONS } from "@/components/interviewmode/types";
 import {
@@ -11,6 +12,13 @@ import { Button } from "@/components/ui/button";
 import { Confetti, type ConfettiRef } from "@/components/ui/confetti";
 import { Ripple } from "@/components/ui/ripple";
 import { configureInterviewAssistant } from "@/lib/configure-interview-assistant";
+import { pickInterviewer } from "@/lib/interview-interviewer";
+import {
+  buildCodingSolutionStarter,
+  challengeDisplayTitle,
+  resolveCodingChallenge,
+  type CompanyCodingChallenge,
+} from "@/lib/interview-coding-questions";
 import { collectWeaknessHintsFromUserLine } from "@/lib/interview-debrief";
 import { persistInterviewSessionDebrief } from "@/lib/actions/interview-mode.actions";
 import {
@@ -21,7 +29,7 @@ import {
   type InterviewTranscriptLine,
 } from "@/lib/interview-session-storage";
 import { isBenignMeetingShutdown } from "@/lib/vapi-meeting-errors";
-import { vapi } from "@/lib/vapi.sdk";
+import { safeVapiStart, safeVapiStop, vapi } from "@/lib/vapi.sdk";
 import { cn } from "@/lib/utils";
 import { ArrowLeft, Mic, MicOff, PhoneOff } from "lucide-react";
 import Link from "next/link";
@@ -57,13 +65,19 @@ export default function InterviewSession() {
   const messagesRef = useRef<InterviewTranscriptLine[]>([]);
   const weaknessHintsRef = useRef<string[]>([]);
   const codingQuestionRef = useRef("");
+  const codingChallengeRef = useRef<CompanyCodingChallenge | null>(null);
   const [codingOpen, setCodingOpen] = useState(false);
+  const [codingGateOpen, setCodingGateOpen] = useState(false);
+  const [pendingChallenge, setPendingChallenge] =
+    useState<CompanyCodingChallenge | null>(null);
   const [codingQuestion, setCodingQuestion] = useState("");
+  const [codingSource, setCodingSource] = useState("");
   const [codingLang, setCodingLang] = useState<InterviewCodingLanguage>(
     defaultInterviewCodingLanguage,
   );
   const [remainingSec, setRemainingSec] = useState(0);
   const navigatedRef = useRef(false);
+  const callEndingRef = useRef(false);
   const confettiRef = useRef<ConfettiRef>(null);
   const [techFaqs, setTechFaqs] = useState<string[]>([]);
 
@@ -79,6 +93,25 @@ export default function InterviewSession() {
     () => Math.max(180, (payload?.durationMinutes ?? 30) * 60),
     [payload?.durationMinutes],
   );
+
+  const interviewer = useMemo(() => {
+    const roundStage = payload?.roundStage ?? "technical";
+    const company = payload?.company ?? "";
+    if (payload?.interviewerName && payload?.interviewerTitle) {
+      return {
+        name: payload.interviewerName,
+        firstName:
+          payload.interviewerName.trim().split(/\s+/)[0] ?? "Alex",
+        title: payload.interviewerTitle,
+      };
+    }
+    return pickInterviewer(roundStage, company || "Company");
+  }, [
+    payload?.company,
+    payload?.interviewerName,
+    payload?.interviewerTitle,
+    payload?.roundStage,
+  ]);
 
   useEffect(() => {
     messagesRef.current = messages;
@@ -156,7 +189,10 @@ export default function InterviewSession() {
       durationMinutes: p.durationMinutes,
       messages: messagesRef.current,
       weaknessHints: weaknessHintsRef.current,
-      codingQuestion: codingQuestionRef.current.trim() || null,
+      codingQuestion:
+        codingChallengeRef.current
+          ? `${challengeDisplayTitle(codingChallengeRef.current)} — ${codingChallengeRef.current.prompt.slice(0, 200)}`
+          : codingQuestionRef.current.trim() || null,
       endedAt,
       roundStage: p.roundStage ?? "technical",
     };
@@ -216,6 +252,8 @@ export default function InterviewSession() {
     };
 
     const onCallEnd = () => {
+      if (callEndingRef.current) return;
+      callEndingRef.current = true;
       setCallStatus("ended");
       void finalizeToDebrief();
     };
@@ -235,18 +273,23 @@ export default function InterviewSession() {
               const args = JSON.parse(tc.function.arguments || "{}") as {
                 question?: string;
                 language_hint?: string;
+                question_id?: string;
               };
-              if (args.question?.trim()) {
-                const q = args.question.trim();
-                codingQuestionRef.current = q;
-                setCodingQuestion(q);
-                if (args.language_hint?.trim()) {
-                  setCodingLang(
-                    coerceInterviewCodingLanguage(args.language_hint.trim()),
-                  );
-                }
-                setCodingOpen(true);
-              }
+              const company = payloadRef.current?.company ?? "Tech";
+              const challenge = resolveCodingChallenge(company, {
+                aiQuestion: args.question?.trim(),
+                questionId: args.question_id?.trim(),
+                sessionSeed: payloadRef.current?.name ?? "session",
+              });
+              const lang = args.language_hint?.trim()
+                ? coerceInterviewCodingLanguage(args.language_hint.trim())
+                : codingLang;
+
+              codingChallengeRef.current = challenge;
+              setPendingChallenge(challenge);
+              setCodingQuestion(challengeDisplayTitle(challenge));
+              setCodingLang(lang);
+              setCodingGateOpen(true);
             } catch {
               /* ignore */
             }
@@ -303,11 +346,7 @@ export default function InterviewSession() {
       setRemainingSec((s) => {
         if (s <= 1) {
           window.clearInterval(id);
-          try {
-            vapi.stop();
-          } catch {
-            /* noop */
-          }
+          safeVapiStop();
           return 0;
         }
         return s - 1;
@@ -318,19 +357,25 @@ export default function InterviewSession() {
 
   useEffect(() => {
     return () => {
-      try {
-        vapi.stop();
-      } catch {
-        /* noop */
-      }
+      safeVapiStop();
     };
   }, []);
 
   const startCall = () => {
     const p = payloadRef.current;
     if (!p?.mode) return;
+    callEndingRef.current = false;
     setCallStatus("connecting");
     const first = p.name.trim().split(/\s+/)[0] || "there";
+    const roundStage = p.roundStage ?? "technical";
+    const sessionInterviewer =
+      p.interviewerName && p.interviewerTitle
+        ? {
+            name: p.interviewerName,
+            firstName: p.interviewerName.trim().split(/\s+/)[0] ?? "Alex",
+            title: p.interviewerTitle,
+          }
+        : pickInterviewer(roundStage, p.company);
 
     const assistant = configureInterviewAssistant({
       candidateName: p.name.trim(),
@@ -338,29 +383,31 @@ export default function InterviewSession() {
       resumeText: p.resumeText,
       durationMinutes: p.durationMinutes,
       mode: p.mode,
-      roundStage: p.roundStage ?? "technical",
+      roundStage,
+      interviewer: sessionInterviewer,
     });
 
     const assistantOverrides = {
       variableValues: {
         candidate_name: first,
         company_name: p.company.trim(),
+        interviewer_first_name: sessionInterviewer.firstName,
+        interviewer_name: sessionInterviewer.name,
+        interviewer_title: sessionInterviewer.title,
       },
       clientMessages: ["transcript", "tool-calls"],
       serverMessages: [],
     };
 
     // @ts-expect-error Vapi start overload
-    vapi.start(assistant, assistantOverrides);
+    safeVapiStart(assistant, assistantOverrides);
   };
 
   const stopCall = () => {
-    try {
-      vapi.stop();
-    } catch {
-      /* noop */
-    }
+    if (callEndingRef.current) return;
+    callEndingRef.current = true;
     setCallStatus("ended");
+    safeVapiStop();
     void finalizeToDebrief();
   };
 
@@ -458,15 +505,19 @@ export default function InterviewSession() {
           Voice session · {payload.company} · {stageLabel}
         </p>
         <h1 className="mt-2 text-2xl font-black tracking-tight text-neutral-900">
-          Hey {payload.name.split(/\s+/)[0]} — let&apos;s run your interview
+          Hey {payload.name.split(/\s+/)[0]} — interview with {interviewer.name}
         </h1>
+        <p className="mt-1 text-sm font-semibold text-neutral-700">
+          {interviewer.title} · {payload.company}
+        </p>
         <p className="mt-2 max-w-2xl text-sm text-neutral-600">
           {roundStage === "technical" ? (
             <>
               Start when you&apos;re ready. This technical round blends CV-deep
-              review with realistic depth questions; the interviewer may open a
-              coding workspace mid-session. The call ends automatically when the
-              timer hits zero.
+              review with realistic depth questions. When it&apos;s time to code,
+              you&apos;ll be asked permission before we open the IDE with a{" "}
+              {payload.company}-style question and test cases in comments. The call
+              ends automatically when the timer hits zero.
             </>
           ) : roundStage === "managerial" ? (
             <>
@@ -567,7 +618,10 @@ export default function InterviewSession() {
               messages.map((m, i) => (
                 <p key={`${i}-${m.role}-${m.content.slice(0, 12)}`}>
                   <span className="font-black text-neutral-800">
-                    {m.role === "assistant" ? "Interviewer" : payload.name}:
+                    {m.role === "assistant"
+                      ? interviewer.firstName
+                      : payload.name.split(/\s+/)[0]}
+                    :
                   </span>{" "}
                   <span className="text-neutral-700">{m.content}</span>
                 </p>
@@ -577,11 +631,51 @@ export default function InterviewSession() {
         </section>
       </div>
 
+      <CodingEnvironmentGate
+        open={codingGateOpen && pendingChallenge != null}
+        company={payload.company}
+        challenge={
+          pendingChallenge ??
+          resolveCodingChallenge(payload.company, { sessionSeed: payload.name })
+        }
+        language={codingLang}
+        onLanguageChange={setCodingLang}
+        onApprove={() => {
+          const challenge =
+            pendingChallenge ??
+            resolveCodingChallenge(payload.company, {
+              sessionSeed: payload.name,
+            });
+          codingChallengeRef.current = challenge;
+          const template = buildCodingSolutionStarter(
+            codingLang,
+            payload.company,
+            challenge,
+          );
+          codingQuestionRef.current = challenge.prompt;
+          setCodingQuestion(challengeDisplayTitle(challenge));
+          setCodingSource(template);
+          setCodingGateOpen(false);
+          setCodingOpen(true);
+        }}
+        onDecline={() => {
+          setCodingGateOpen(false);
+          setPendingChallenge(null);
+        }}
+      />
+
       <div className="mt-8">
         <InterviewCodingWorkspace
           open={codingOpen}
-          question={codingQuestion}
+          company={payload.company}
+          challenge={
+            codingChallengeRef.current ??
+            pendingChallenge ??
+            resolveCodingChallenge(payload.company, { sessionSeed: payload.name })
+          }
           language={codingLang}
+          code={codingSource}
+          onCodeChange={setCodingSource}
           onLanguageChange={setCodingLang}
         />
       </div>

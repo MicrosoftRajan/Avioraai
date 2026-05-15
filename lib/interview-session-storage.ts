@@ -23,6 +23,9 @@ export type InterviewSessionPayload = {
   mode?: InterviewModeType;
   /** Row id in Supabase `interview_mode_session` when server persist succeeds */
   supabaseSessionId?: string;
+  /** Assigned mock interviewer (voice rounds) */
+  interviewerName?: string;
+  interviewerTitle?: string;
 };
 
 export type InterviewTranscriptLine = {

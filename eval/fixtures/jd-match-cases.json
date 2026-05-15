@@ -1,0 +1,26 @@
+[
+  {
+    "id": "strong-frontend-match",
+    "resume": "Senior Frontend Engineer with 5 years React, TypeScript, Next.js, Node.js. Built design systems and improved Core Web Vitals by 30%. Led cross-functional delivery with product and backend teams.",
+    "jd": "We need a Senior Frontend Engineer proficient in React, TypeScript, and Next.js. Experience with Node.js APIs, performance optimization, and cross-functional collaboration required.",
+    "minScore": 60,
+    "maxScore": 94,
+    "mustMentionInStrengths": ["react", "typescript"]
+  },
+  {
+    "id": "weak-marketing-vs-engineer",
+    "resume": "Marketing coordinator. Managed social campaigns, brand voice, and email newsletters. Strong copywriting and Canva design.",
+    "jd": "Software Engineer — must have Python, distributed systems, Kubernetes, and PostgreSQL. Build microservices at scale.",
+    "minScore": 38,
+    "maxScore": 52,
+    "mustMentionGap": ["python", "kubernetes", "postgresql"]
+  },
+  {
+    "id": "partial-backend-match",
+    "resume": "Backend developer: Java, Spring Boot, REST APIs, MySQL. Some AWS deployment experience.",
+    "jd": "Backend role: Java, Spring, AWS, microservices, Kafka, and CI/CD pipelines.",
+    "minScore": 55,
+    "maxScore": 85,
+    "mustMentionInStrengths": ["java", "spring"]
+  }
+]

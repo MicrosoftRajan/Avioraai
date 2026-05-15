@@ -40,30 +40,32 @@ function ChartContainer({
   config,
   className,
   children,
+  height = 260,
 }: {
   config: ChartConfig;
   className?: string;
   children: React.ReactNode;
+  /** Explicit pixel height — avoids Recharts width/height -1 when parent layout is not ready. */
+  height?: number;
 }) {
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
   return (
     <ChartContext.Provider value={{ config }}>
       <div
         data-slot="chart"
-        className={cn(
-          "relative w-full min-h-[200px] min-w-0 shrink-0 [&_.recharts-responsive-container]:min-h-[200px]",
-          className,
-        )}
-        style={configToCssVars(config)}
+        className={cn("relative w-full min-w-0 shrink-0", className)}
+        style={{ ...configToCssVars(config), height }}
       >
-        <ResponsiveContainer
-          width="100%"
-          height="100%"
-          minWidth={48}
-          minHeight={200}
-          debounce={50}
-        >
-          {children as React.ReactElement}
-        </ResponsiveContainer>
+        {mounted ? (
+          <ResponsiveContainer width="100%" height={height} minWidth={48} debounce={50}>
+            {children as React.ReactElement}
+          </ResponsiveContainer>
+        ) : null}
       </div>
     </ChartContext.Provider>
   );

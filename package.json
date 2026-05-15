@@ -4,10 +4,13 @@
   "private": true,
   "scripts": {
     "dev": "next dev --webpack",
+    "dev:clean": "rm -rf .next && next dev --webpack",
     "dev:turbo": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "eval:accuracy": "npx tsx scripts/eval-accuracy.ts",
+    "eval:accuracy:ai": "npx tsx scripts/eval-accuracy.ts --ai"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.3.0",

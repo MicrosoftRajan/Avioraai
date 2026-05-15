@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
+import DevConsoleFilter from "@/components/DevConsoleFilter";
 import Navbar from "@/components/Navbar";
 import { ClerkProvider } from "@clerk/nextjs";
 
@@ -31,6 +32,13 @@ export const metadata: Metadata = {
     "voice tutor",
   ],
   applicationName: "Aviora",
+  icons: {
+    icon: [
+      { url: "/images/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+    ],
+    shortcut: "/images/favicon-32x32.png",
+    apple: "/images/favicon-32x32.png",
+  },
   openGraph: {
     type: "website",
     locale: "en_US",
@@ -66,6 +74,11 @@ export default function RootLayout({
 }>) {
   const themeBootstrap = `(function(){try{var t=localStorage.getItem("theme");if(t==="dark")document.documentElement.classList.add("dark");else if(t==="light")document.documentElement.classList.remove("dark");}catch(e){}})();`;
 
+  const devConsoleFilter =
+    process.env.NODE_ENV === "development"
+      ? `(function(){var f=["Clerk has been loaded with development keys","[React Flow]: It looks like you've created a new nodeTypes or edgeTypes","Meeting ended due to ejection","Meeting has ended"];var w=console.warn;console.warn=function(){var t=Array.prototype.map.call(arguments,String).join(" ");if(f.some(function(s){return t.indexOf(s)!==-1}))return;w.apply(console,arguments);};var oe=window.onerror;window.onerror=function(m,s,l,c,e){if(f.some(function(x){return String(m||"").indexOf(x)!==-1||(e&&e.message&&e.message.indexOf(x)!==-1);}))return true;if(oe)return oe.apply(this,arguments);return false;};})();`
+      : "";
+
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "WebSite",
@@ -85,7 +98,13 @@ export default function RootLayout({
         <Script id="theme-bootstrap" strategy="beforeInteractive">
           {themeBootstrap}
         </Script>
+        {devConsoleFilter ? (
+          <Script id="dev-console-filter" strategy="beforeInteractive">
+            {devConsoleFilter}
+          </Script>
+        ) : null}
         <ClerkProvider appearance={{variables:{colorPrimary: '#fe5933'}}}>
+        <DevConsoleFilter />
         <Navbar />
         {children}
         </ClerkProvider>

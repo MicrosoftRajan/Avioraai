@@ -5,6 +5,12 @@ import {
   type InterviewCodingLanguage,
 } from "@/components/interviewmode/coding-languages";
 import {
+  buildCodingSolutionStarter,
+  challengeDisplayTitle,
+  extractCodingSolution,
+  type CompanyCodingChallenge,
+} from "@/lib/interview-coding-questions";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -13,30 +19,52 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { AnimatePresence, motion } from "motion/react";
-import { useMemo } from "react";
-
-const CODE_PLACEHOLDERS: Record<InterviewCodingLanguage, string> = {
-  C: "/* Write your C solution here — the interviewer continues over voice. */",
-  "C++": "// Write your C++ solution here — the interviewer continues over voice.",
-  Java: "// Write your Java solution here — the interviewer continues over voice.",
-  Python: "# Write your Python solution here — the interviewer continues over voice.",
-  Go: "// Write your Go solution here — the interviewer continues over voice.",
-};
+import { useEffect, useRef } from "react";
 
 export default function InterviewCodingWorkspace({
   open,
-  question,
+  company,
+  challenge,
   language,
+  code,
+  onCodeChange,
   onLanguageChange,
   className,
 }: {
   open: boolean;
-  question: string;
+  company: string;
+  challenge: CompanyCodingChallenge;
   language: InterviewCodingLanguage;
+  code: string;
+  onCodeChange: (code: string) => void;
   onLanguageChange: (lang: InterviewCodingLanguage) => void;
   className?: string;
 }) {
-  const placeholder = useMemo(() => CODE_PLACEHOLDERS[language], [language]);
+  const prevLangRef = useRef(language);
+  const openRef = useRef(false);
+
+  useEffect(() => {
+    if (!open) {
+      openRef.current = false;
+      return;
+    }
+    if (!openRef.current) {
+      openRef.current = true;
+      if (!code.trim()) {
+        onCodeChange(buildCodingSolutionStarter(language, company, challenge));
+      }
+    }
+  }, [open, code, language, company, challenge, onCodeChange]);
+
+  useEffect(() => {
+    if (!open) return;
+    if (prevLangRef.current === language) return;
+    const preserved = extractCodingSolution(code);
+    prevLangRef.current = language;
+    onCodeChange(
+      buildCodingSolutionStarter(language, company, challenge, preserved),
+    );
+  }, [language, company, challenge, open, code, onCodeChange]);
 
   return (
     <AnimatePresence>
@@ -51,18 +79,19 @@ export default function InterviewCodingWorkspace({
             className,
           )}
         >
-          <div className="flex flex-col gap-3 border-b-2 border-black bg-[#fde047] px-4 py-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div>
-                <p className="text-xs font-black uppercase tracking-widest text-black">
-                  Coding environment
-                </p>
-                <p className="mt-0.5 text-[11px] font-semibold text-black/80">
-                  IDE workspace · read the question, pick your language, then
-                  code.
-                </p>
-              </div>
-            </div>
+          <motion.div className="flex flex-col gap-3 border-b-2 border-black bg-[#fde047] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <motion.div>
+              <p className="text-xs font-black uppercase tracking-widest text-black">
+                Coding environment · {company}
+              </p>
+              <p className="mt-0.5 text-sm font-extrabold text-black">
+                {challengeDisplayTitle(challenge)}
+              </p>
+              <p className="mt-0.5 text-[11px] font-semibold text-black/75">
+                Read the question on the left — write your solution in the
+                editor on the right.
+              </p>
+            </motion.div>
             <div className="flex flex-wrap items-center gap-3">
               <label
                 htmlFor="interview-coding-language"
@@ -92,28 +121,69 @@ export default function InterviewCodingWorkspace({
                 </SelectContent>
               </Select>
             </div>
-          </div>
+          </motion.div>
 
-          <div className="grid gap-4 p-4 lg:grid-cols-2">
-            <div className="flex flex-col gap-2">
+          <motion.div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
+            <aside className="border-b-2 border-black bg-neutral-50 p-4 lg:border-b-0 lg:border-r-2">
               <p className="text-xs font-black uppercase tracking-widest text-neutral-500">
                 Question
               </p>
-              <div className="min-h-[200px] rounded-xl border-2 border-neutral-200 bg-neutral-50 p-4 text-sm leading-relaxed whitespace-pre-wrap text-neutral-900">
-                {question}
-              </div>
-            </div>
-            <div className="flex flex-col gap-2">
-              <p className="text-xs font-black uppercase tracking-widest text-neutral-500">
+              <p className="mt-1 text-[11px] font-bold text-neutral-600">
+                {challenge.frequency}
+              </p>
+              <p className="mt-3 text-sm font-medium leading-relaxed text-neutral-900">
+                {challenge.prompt}
+              </p>
+
+              <p className="mt-5 text-xs font-black uppercase tracking-widest text-neutral-500">
+                Test cases
+              </p>
+              <ul className="mt-2 space-y-3">
+                {challenge.testCases.map((tc) => (
+                  <li
+                    key={tc.label}
+                    className="rounded-lg border-2 border-black bg-white p-3 text-sm shadow-[3px_3px_0_0_rgba(0,0,0,1)]"
+                  >
+                    <p className="text-xs font-black uppercase text-neutral-600">
+                      {tc.label}
+                    </p>
+                    <p className="mt-1 font-mono text-xs leading-relaxed text-neutral-800">
+                      <span className="font-bold">Input:</span> {tc.input}
+                    </p>
+                    <p className="mt-1 font-mono text-xs leading-relaxed text-neutral-800">
+                      <span className="font-bold">Expected:</span> {tc.output}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+
+              {challenge.constraints.length > 0 ? (
+                <>
+                  <p className="mt-5 text-xs font-black uppercase tracking-widest text-neutral-500">
+                    Constraints
+                  </p>
+                  <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-neutral-800">
+                    {challenge.constraints.map((c) => (
+                      <li key={c}>{c}</li>
+                    ))}
+                  </ul>
+                </>
+              ) : null}
+            </aside>
+
+            <motion.div className="p-4">
+              <p className="mb-2 text-xs font-black uppercase tracking-widest text-neutral-500">
                 Your solution · {language}
               </p>
               <textarea
                 spellCheck={false}
-                placeholder={placeholder}
-                className="min-h-[280px] w-full resize-y rounded-xl border-2 border-black bg-[#0d1117] p-4 font-mono text-sm leading-relaxed text-[#e6edf3] outline-none placeholder:text-neutral-500 focus-visible:ring-2 focus-visible:ring-black/30"
+                value={code}
+                onChange={(e) => onCodeChange(e.target.value)}
+                aria-label="Code editor"
+                className="min-h-[420px] w-full resize-y rounded-xl border-2 border-black bg-[#0d1117] p-4 font-mono text-sm leading-relaxed text-[#e6edf3] outline-none placeholder:text-neutral-500 focus-visible:ring-2 focus-visible:ring-black/30"
               />
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
         </motion.div>
       ) : null}
     </AnimatePresence>

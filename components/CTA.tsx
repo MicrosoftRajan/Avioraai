@@ -8,7 +8,13 @@ const CTA = () => {
       <div className='cta-badge'>Start learning Your ways</div>
       <h2 className='text-3xl font-bold'>Build Your Persionalize Learning</h2>
       <p>Pick a name, subject, Voice, & personality - and start learning through voice conversation that feel neutral and fun</p>
-      <Image src="images/cta.svg" alt='cta' width={362} height={232}/>
+      <Image
+        src="/images/cta.svg"
+        alt="Start learning with Aviora"
+        width={362}
+        height={232}
+        priority
+      />
       <button className='btn-primary'>
         <Image
           src="/icons/plus.svg"

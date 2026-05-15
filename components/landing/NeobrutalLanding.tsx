@@ -3,41 +3,11 @@
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import Link from "next/link";
-import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { ArrowRight } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import AppMindMap from "@/components/landing/AppMindMap";
-
-const ChartAreaAxes = dynamic(
-  () =>
-    import("@/components/landing/PerformanceCharts").then((m) => m.ChartAreaAxes),
-  {
-    ssr: false,
-    loading: () => (
-      <div
-        className="min-h-[260px] w-full rounded-xl border-[3px] border-black bg-neutral-100 shadow-[6px_6px_0_0_#000]"
-        aria-hidden
-      />
-    ),
-  },
-);
-
-const ChartPieDonutText = dynamic(
-  () =>
-    import("@/components/landing/PerformanceCharts").then(
-      (m) => m.ChartPieDonutText,
-    ),
-  {
-    ssr: false,
-    loading: () => (
-      <div
-        className="min-h-[280px] w-full rounded-xl border-[3px] border-black bg-neutral-100 shadow-[6px_6px_0_0_#000]"
-        aria-hidden
-      />
-    ),
-  },
-);
+import MindMapSection from "@/components/landing/MindMapSection";
+import LandingCharts from "@/components/landing/LandingCharts";
 import { LightRays } from "@/components/ui/light-rays";
 import { MorphingText } from "@/components/ui/morphing-text";
 import { ComicText } from "@/components/ui/comic-text";
@@ -344,14 +314,7 @@ export default function NeobrutalLanding() {
             ))}
           </div>
 
-          <div className="mt-10 grid min-w-0 gap-6 lg:grid-cols-2">
-            <div className="min-w-0" data-gsap-reveal data-neo-lift>
-              <ChartAreaAxes />
-            </div>
-            <div className="min-w-0" data-gsap-reveal data-neo-lift>
-              <ChartPieDonutText />
-            </div>
-          </div>
+          <LandingCharts />
         </div>
       </section>
 
@@ -468,6 +431,92 @@ export default function NeobrutalLanding() {
         </div>
       </section>
 
+      {/* Why Aviora */}
+      <section
+        id="why-aviora"
+        className="border-b-[3px] border-black bg-transparent px-4 py-24 md:py-32"
+      >
+        <div className="mx-auto max-w-6xl">
+          <div className="mb-12 text-center" data-gsap-reveal>
+            <p
+              className={`mx-auto mb-4 inline-block ${neoBorder} ${neoShadowSm} bg-white px-5 py-2 text-xs font-bold uppercase`}
+            >
+              Why Aviora
+            </p>
+            <h2 className="text-3xl font-extrabold md:text-4xl">
+              One platform for learning and landing the role.
+            </h2>
+            <p className="mx-auto mt-4 max-w-2xl font-semibold text-black/75">
+              Practice like it&apos;s real—voice interviews tied to your résumé,
+              target company, and round type—not another generic chatbot.
+            </p>
+          </div>
+
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {[
+              {
+                title: "Voice + résumé context",
+                body: "Upload your CV. The interviewer asks about your real experience, target employer, and role—not canned trivia.",
+                bg: "bg-[#fbcfe8]",
+              },
+              {
+                title: "Round-specific mocks",
+                body: "Technical, managerial, HR, and JD screening each behave differently. HR won’t throw you into a coding IDE.",
+                bg: "bg-[#fde047]",
+              },
+              {
+                title: "Live coding, your way",
+                body: "When it’s time to code, you approve opening the environment. Company-style questions and test cases load as comments in your editor.",
+                bg: "bg-[#a5f3fc]",
+              },
+              {
+                title: "Named interviewers",
+                body: "Meet a consistent persona—e.g. a senior EM or HR partner—who introduces themselves by name, like a real loop.",
+                bg: "bg-[#d9f99d]",
+              },
+              {
+                title: "Mock or roadmap debrief",
+                body: "Finish with sharp improvement bullets or a multi-week study plan—grounded in what you actually said in the session.",
+                bg: "bg-[#fda4af]",
+              },
+              {
+                title: "Learn between interviews",
+                body: "Voice companions for subjects and topics you choose—live subtitles and PDF export when you want to review later.",
+                bg: "bg-white",
+              },
+            ].map((item) => (
+              <article
+                key={item.title}
+                data-gsap-reveal
+                data-neo-lift
+                className={`flex flex-col gap-3 p-6 ${neoBorder} ${neoShadow} ${item.bg}`}
+              >
+                <h3 className="text-lg font-extrabold leading-snug">{item.title}</h3>
+                <p className="text-sm font-semibold leading-relaxed text-black/85">
+                  {item.body}
+                </p>
+              </article>
+            ))}
+          </div>
+
+          <div
+            data-gsap-reveal
+            className={`mt-10 flex flex-col items-center gap-4 p-8 text-center ${neoBorder} ${neoShadow} bg-[#fef08e]`}
+          >
+            <p className="max-w-xl text-base font-extrabold leading-snug md:text-lg">
+              JD fit check → voice mock → optional coding → debrief. The full
+              prep loop in one place.
+            </p>
+            <InteractiveHoverButton
+              className="border-[3px] border-black bg-black text-white"
+              onClick={() => router.push("/interview-mode")}
+            >
+              Start interview mode
+            </InteractiveHoverButton>
+          </div>
+        </div>
+      </section>
+
       {/* App mindmap */}
       <section
         id="mindmap"
@@ -489,9 +538,7 @@ export default function NeobrutalLanding() {
             </p>
           </div>
 
-          <div data-gsap-reveal data-neo-lift>
-            <AppMindMap />
-          </div>
+          <MindMapSection />
         </div>
       </section>
 
