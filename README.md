@@ -146,3 +146,4 @@ Long-term goals include deeper question banks, rubric scoring, analytics, and jo
 - Keep **`SUPABASE_SERVICE_ROLE_KEY`** server-only (never `NEXT_PUBLIC_*`).
 - Do not commit `.env.local` or real keys. Optional screenshots live under `public/readme/` for docs only.
  
+# Avioraai---Interview
