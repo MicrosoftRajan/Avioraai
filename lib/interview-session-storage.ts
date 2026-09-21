@@ -33,6 +33,14 @@ export type InterviewTranscriptLine = {
   content: string;
 };
 
+export type InterviewLiveRoadmapSnapshot = {
+  headline: string;
+  coachingNote: string;
+  weeks: { title: string; focus: string[] }[];
+  signals: string[];
+  topicsCovered: string[];
+};
+
 export type InterviewDebriefPayload = {
   mode: InterviewModeType;
   name: string;
@@ -43,4 +51,6 @@ export type InterviewDebriefPayload = {
   codingQuestion: string | null;
   endedAt: number;
   roundStage?: InterviewRoundStage;
+  /** Roadmap as it stood when the call ended (evolved live from the transcript). */
+  liveRoadmap?: InterviewLiveRoadmapSnapshot;
 };

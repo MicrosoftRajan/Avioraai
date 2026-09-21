@@ -475,8 +475,8 @@ export default function NeobrutalLanding() {
                 bg: "bg-[#d9f99d]",
               },
               {
-                title: "Mock or roadmap debrief",
-                body: "Finish with sharp improvement bullets or a multi-week study plan—grounded in what you actually said in the session.",
+                title: "Live interview roadmap",
+                body: "A 4-week plan and interview arc update in real time from your answers—then lock in on the debrief when you finish.",
                 bg: "bg-[#fda4af]",
               },
               {

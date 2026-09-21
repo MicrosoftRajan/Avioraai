@@ -244,12 +244,23 @@ export default function InterviewDebrief() {
         </section>
       ) : null}
 
-      {payload.mode === "roadmap" && summary?.roadmap?.length ? (
+      {payload.mode === "roadmap" &&
+      (summary?.roadmap?.length || payload.liveRoadmap?.weeks?.length) ? (
         <section className="mt-6 space-y-4">
           <h2 className="text-lg font-black text-neutral-900">
             Personalized roadmap (where you lag & how to fix it)
           </h2>
-          {summary.roadmap.map((week, idx) => (
+          <p className="text-sm font-medium text-neutral-600">
+            Built live from this session
+            {payload.liveRoadmap?.topicsCovered?.length
+              ? ` · topics: ${payload.liveRoadmap.topicsCovered.join(", ")}`
+              : ""}
+            .
+          </p>
+          {(summary?.roadmap?.length
+            ? summary.roadmap
+            : payload.liveRoadmap?.weeks ?? []
+          ).map((week, idx) => (
             <article
               key={week.title}
               className="rounded-2xl border-2 border-black bg-white p-5 shadow-[4px_4px_0_0_rgba(0,0,0,0.85)]"

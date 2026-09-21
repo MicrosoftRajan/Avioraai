@@ -3,6 +3,7 @@
 import {useEffect, useRef, useState} from 'react'
 import {cn, configureAssistant, getSubjectColor, getSubjectIconSrc} from "@/lib/utils";
 import { isBenignMeetingShutdown } from "@/lib/vapi-meeting-errors";
+import { vapiErrorMessage } from "@/lib/vapi-auth";
 import { safeVapiStart, safeVapiStop, vapi } from "@/lib/vapi.sdk";
 import Image from "next/image";
 import Lottie, {LottieRefCurrentProps} from "lottie-react";
@@ -24,6 +25,7 @@ const CompanionComponent = ({ companionId, subject, topic, name, userName, userI
     const [isMuted, setIsMuted] = useState(false);
     const [messages, setMessages] = useState<SavedMessage[]>([]);
     const [subtitle, setSubtitle] = useState<string>("");
+    const [voiceError, setVoiceError] = useState<string | null>(null);
 
     const lottieRef = useRef<LottieRefCurrentProps>(null);
     const callStatusRef = useRef(callStatus);
@@ -64,6 +66,10 @@ const CompanionComponent = ({ companionId, subject, topic, name, userName, userI
         const onError = (error: unknown) => {
             if (isBenignMeetingShutdown(error)) return;
             console.warn("[vapi]", error);
+            setVoiceError(vapiErrorMessage(error));
+            setCallStatus((st) =>
+                st === CallStatus.CONNECTING ? CallStatus.INACTIVE : st,
+            );
         };
 
         vapi.on('call-start', onCallStart);
@@ -94,7 +100,8 @@ const CompanionComponent = ({ companionId, subject, topic, name, userName, userI
     }
 
     const handleCall = async () => {
-        setCallStatus(CallStatus.CONNECTING)
+        setVoiceError(null);
+        setCallStatus(CallStatus.CONNECTING);
 
         const assistantOverrides = {
             variableValues: { subject, topic, style },
@@ -102,8 +109,13 @@ const CompanionComponent = ({ companionId, subject, topic, name, userName, userI
             serverMessages: [],
         }
 
-        // @ts-expect-error Vapi start accepts assistant config + overrides
-        safeVapiStart(configureAssistant(voice, style), assistantOverrides)
+        try {
+            // @ts-expect-error Vapi start accepts assistant config + overrides
+            await safeVapiStart(configureAssistant(voice, style), assistantOverrides)
+        } catch (error) {
+            setVoiceError(vapiErrorMessage(error));
+            setCallStatus(CallStatus.INACTIVE);
+        }
     }
 
     const handleDisconnect = () => {
@@ -213,6 +225,11 @@ const CompanionComponent = ({ companionId, subject, topic, name, userName, userI
                         <p className="text-sm font-bold">
                             {subtitle ? subtitle : "Start the session to see subtitles here."}
                         </p>
+                        {voiceError ? (
+                            <p className="mt-3 text-sm font-semibold text-red-700">
+                                {voiceError}
+                            </p>
+                        ) : null}
                     </div>
 
                     <div className="mt-4 grid gap-3">

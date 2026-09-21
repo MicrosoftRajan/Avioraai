@@ -7,9 +7,10 @@ Aviora is a voice-enabled interview prep and learning companion: companion lesso
 ## Features
 
 - **Dashboard (signed-in)**: recent companion sessions, session cards, and CTA to create new companions.
-- **Interview Mode** (`/interview-mode`): profile + resume upload, setup, mock vs roadmap track choice, voice session via Vapi, and debrief.
+- **Interview Mode** (`/interview-mode`): profile + resume upload, setup, mock vs roadmap track choice, voice session via Vapi with a **live interview roadmap** that updates from the transcript, and debrief.
 - **Auth**: Clerk (middleware protects non-public routes; public routes include `/`, `/landing`, sign-in/up).
-- **Data**: Companion data uses Supabase with the anon key + Clerk token; Interview Mode session rows use a **server-only** admin client when configured.
+- **Find Job** (`/find-job`): live career-page and job-board listings, scored against a resume, with scraped jobs persisted in Supabase or `.data/scraped-jobs.json`.
+- **Data**: Companion data uses Supabase with the anon key + Clerk token; Interview Mode session rows and Find Job scraped listings use a **server-only** admin client when configured (local `.data/` fallback otherwise).
 
 ---
 
@@ -54,17 +55,19 @@ NEXT_PUBLIC_SITE_URL=https://your-domain.com
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 
-# Supabase — Interview Mode server persistence (insert/update interview sessions)
-# If omitted, Interview Mode still works using browser sessionStorage only.
+# Supabase — Interview Mode + Find Job scraped listings (server persistence)
+# If omitted, Interview Mode uses browser sessionStorage; Find Job stores
+# scraped jobs in `.data/scraped-jobs.json`.
 SUPABASE_SERVICE_ROLE_KEY=
 
-# Vapi — voice Interview Mode session
+# Vapi — voice companions and Interview Mode (public key from dashboard.vapi.ai)
 NEXT_PUBLIC_VAPI_WEB_TOKEN=
+# NEXT_PUBLIC_VAPI_PUBLIC_KEY=
 ```
 
 Clerk image domains (e.g. `img.clerk.com`) are already allowed in `next.config.ts` for `next/image`.
 
-### Database (Interview Mode)
+### Database (Interview Mode + Find Job)
 
 Server actions write to Supabase table **`interview_mode_session`** when `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are set:
 
@@ -73,6 +76,8 @@ Server actions write to Supabase table **`interview_mode_session`** when `NEXT_P
 - **`debrief`** + **`ended_at`** updated when the session finishes.
 
 Ensure your table and policies match what `lib/actions/interview-mode.actions.ts` expects (`clerk_user_id`, `name`, `company`, `resume_text`, `resume_file_name`, `duration_minutes`, `mode`, `debrief`, `ended_at`, `updated_at`, etc.).
+
+Find Job upserts scraped listings into **`scraped_jobs`** (see `supabase/migrations/20260920180000_scraped_jobs.sql`). If the service role key is unset, listings persist in **`.data/scraped-jobs.json`**. Rows older than 14 days since last seen are pruned. The Find Job page loads this store first, then refreshes from career pages in the background.
 
 ### Run locally
 
@@ -122,8 +127,9 @@ npm start
 Notable routes:
 
 - `/` — dashboard when signed in; marketing/landing flow when signed out
+- `/find-job` — live career-page jobs with a persistent scrape store
 - `/interview-mode` — Interview Mode landing + setup
-- `/interview-mode/session` — live voice session
+- `/interview-mode/session` — live voice session with a real-time interview roadmap
 - `/interview-mode/debrief` — debrief screen after session
 
 ---

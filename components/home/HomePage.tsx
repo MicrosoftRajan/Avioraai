@@ -18,6 +18,28 @@ export default async function HomePage() {
     <main>
       <h1 className="text-2xl underline">Dashboard Aviora</h1>
 
+      {user ? (
+        <Link
+          href="/find-job"
+          className="mt-4 flex items-start justify-between gap-4 rounded-2xl border-2 border-black bg-[#a5f3fc] p-5 shadow-[6px_6px_0_0_#000] transition-transform hover:-translate-y-0.5"
+        >
+          <div>
+            <p className="text-[11px] font-black uppercase tracking-[0.28em] text-neutral-700">
+              New · Find Job
+            </p>
+            <p className="mt-1 text-lg font-black text-neutral-950">
+              Scan boards, align your resume, auto-apply
+            </p>
+            <p className="mt-1 text-sm font-medium text-neutral-700">
+              Live listings from public career pages plus a real-time apply agent.
+            </p>
+          </div>
+          <span className="shrink-0 rounded-full border-2 border-black bg-white px-3 py-1 text-xs font-black uppercase tracking-widest">
+            Open
+          </span>
+        </Link>
+      ) : null}
+
       {user && completedSessions.length > 0 ? (
         <section className="companions-grid w-full">
           {completedSessions.slice(0, 3).map((session, index) => {

@@ -29,6 +29,8 @@ export const metadata: Metadata = {
     "interview practice",
     "AI interview",
     "job interview prep",
+    "job search",
+    "auto apply",
     "voice tutor",
   ],
   applicationName: "Aviora",

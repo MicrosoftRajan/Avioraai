@@ -59,6 +59,7 @@ export function mindMapNodeColor(n: Node): string {
   if (n.id === "new") return "#d9f99d";
   if (n.id === "subtitles") return "#fef08e";
   if (n.id === "history") return "#a5b4fc";
+  if (n.id === "findjob") return "#a5f3fc";
   if (n.id === "subscription") return "#fda4af";
   return "#ffffff";
 }

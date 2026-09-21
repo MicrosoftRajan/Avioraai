@@ -2,6 +2,7 @@ import { readFileSync } from "fs";
 import { resolve } from "path";
 
 import { buildDebriefSummary } from "@/lib/interview-debrief";
+import { buildLiveInterviewRoadmap } from "@/lib/interview-roadmap";
 import { heuristicJdMatch } from "@/lib/jd-match-heuristic";
 import type {
   InterviewDebriefPayload,
@@ -355,6 +356,102 @@ export async function runAiDebriefGroundingEval(
       },
     ];
   }
+}
+
+export function runLiveRoadmapEval(): EvalCheck[] {
+  const checks: EvalCheck[] = [];
+
+  const seed = buildLiveInterviewRoadmap({
+    company: "Stripe",
+    roundStage: "technical",
+    messages: [],
+    weaknessHints: [],
+  });
+  checks.push({
+    id: "live-roadmap-seed-weeks",
+    suite: "live-roadmap",
+    pass: seed.weeks.length === 4,
+    detail: `${seed.weeks.length} seed weeks (expected 4)`,
+  });
+  checks.push({
+    id: "live-roadmap-seed-open",
+    suite: "live-roadmap",
+    pass: seed.currentPhaseId === "open",
+    detail: `current phase ${seed.currentPhaseId} (expected open)`,
+  });
+
+  const mid = buildLiveInterviewRoadmap({
+    company: "Stripe",
+    roundStage: "technical",
+    messages: [
+      { role: "assistant", content: "How are you today?" },
+      { role: "user", content: "I'm well, ready to go." },
+      {
+        role: "assistant",
+        content: "Walk me through your most important project on your resume.",
+      },
+      {
+        role: "user",
+        content:
+          "I owned checkout latency. We scaled the API with caching and a queue so p99 dropped 40%.",
+      },
+    ],
+    weaknessHints: [],
+    callActive: true,
+  });
+  const resumeOrDepth = ["resume", "depth"].includes(mid.currentPhaseId);
+  checks.push({
+    id: "live-roadmap-progresses-with-transcript",
+    suite: "live-roadmap",
+    pass: resumeOrDepth,
+    detail: `phase ${mid.currentPhaseId} after resume/systems talk`,
+  });
+  checks.push({
+    id: "live-roadmap-detects-systems-topic",
+    suite: "live-roadmap",
+    pass: mid.topicsCovered.includes("system design"),
+    detail: `topics: ${mid.topicsCovered.join(", ") || "(none)"}`,
+  });
+
+  const uncertain = buildLiveInterviewRoadmap({
+    company: "Meta",
+    roundStage: "technical",
+    messages: [
+      { role: "assistant", content: "How would you design this at scale?" },
+      { role: "user", content: "I'm not sure, maybe a cache." },
+    ],
+    weaknessHints: ["Confidence under uncertainty"],
+    callActive: true,
+  });
+  checks.push({
+    id: "live-roadmap-confidence-week",
+    suite: "live-roadmap",
+    pass: uncertain.weeks.some((w) => /confidence/i.test(w.title + w.id)),
+    detail: uncertain.weeks.map((w) => w.title).join(" | "),
+  });
+
+  const coding = buildLiveInterviewRoadmap({
+    company: "Google",
+    roundStage: "technical",
+    messages: [
+      { role: "assistant", content: "May I open the coding environment?" },
+      { role: "user", content: "Yes." },
+    ],
+    weaknessHints: [],
+    codingQuestion: "Implement LRU cache with O(1) operations",
+    codingOpen: true,
+    callActive: true,
+  });
+  checks.push({
+    id: "live-roadmap-coding-week-and-arc",
+    suite: "live-roadmap",
+    pass:
+      coding.currentPhaseId === "coding" &&
+      coding.weeks.some((w) => /coding/i.test(w.title)),
+    detail: `phase ${coding.currentPhaseId}; weeks ${coding.weeks.map((w) => w.title).join(" | ")}`,
+  });
+
+  return checks;
 }
 
 export function summarizeChecks(checks: EvalCheck[]) {

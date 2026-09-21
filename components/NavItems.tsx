@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Sparkles } from 'lucide-react'
+import { Briefcase, Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { usePathname } from 'next/navigation'
 
@@ -9,6 +9,12 @@ const navLinks = [
   { label: 'Home', href: '/' },
   { label: 'Profile', href: '/companions' },
   { label: 'My Journey', href: '/my-journey' },
+  {
+    label: 'Find Job',
+    href: '/find-job',
+    matchPrefix: '/find-job',
+    icon: 'briefcase' as const,
+  },
   {
     label: 'Interview Mode',
     href: '/interview-mode?activate=1',
@@ -48,6 +54,9 @@ const NavItems = () => {
           >
             {'icon' in item && item.icon === 'sparkles' ? (
               <Sparkles className="size-4 shrink-0 opacity-80" aria-hidden />
+            ) : null}
+            {'icon' in item && item.icon === 'briefcase' ? (
+              <Briefcase className="size-4 shrink-0 opacity-80" aria-hidden />
             ) : null}
             {item.label}
           </Link>

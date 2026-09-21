@@ -129,7 +129,8 @@ export default function InterviewCards({
           </>
         ) : (
           <>
-            Pick one track — voice interview plus coaching notes after you finish.
+            Pick one track — voice interview plus a live roadmap that updates
+            from your answers, then coaching notes when you finish.
           </>
         )}
       </p>

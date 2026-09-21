@@ -13,6 +13,7 @@ import {
   runAiJdMatchEval,
   runDebriefEval,
   runHeuristicJdMatchEval,
+  runLiveRoadmapEval,
   summarizeChecks,
   type EvalCheck,
 } from "../lib/eval/accuracy-eval";
@@ -80,6 +81,7 @@ async function main() {
   const checks: EvalCheck[] = [
     ...runHeuristicJdMatchEval(),
     ...runDebriefEval(),
+    ...runLiveRoadmapEval(),
   ];
 
   if (withAi) {

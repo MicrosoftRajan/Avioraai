@@ -32,8 +32,8 @@ export default function ResumeAnalysisCard({
         Interview with personalized roadmap
       </h3>
       <p className="mt-2 text-sm leading-relaxed text-neutral-600">
-        Uses your resume and company context to build a focused prep plan and
-        targeted drills.
+        Uses your resume and company context, then rebuilds a 4-week prep plan
+        live from what you say in the interview.
       </p>
       <Button
         type="button"

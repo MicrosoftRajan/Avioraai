@@ -1,3 +1,4 @@
+import { buildLiveInterviewRoadmap } from "@/lib/interview-roadmap";
 import type {
   InterviewDebriefPayload,
   InterviewModeType,
@@ -46,55 +47,19 @@ export function buildRoadmapWeeks(p: InterviewDebriefPayload): {
   title: string;
   focus: string[];
 }[] {
-  const gaps = dedupe([...p.weaknessHints, ...inferGapsFromTranscript(p.messages)]);
-  const weeks = [
-    {
-      title: "Week 1 — Communication & structure",
-      focus: [
-        "Daily 10-minute spoken answers with STAR skeleton.",
-        "Cut filler words; end each answer with a concise takeaway.",
-      ],
-    },
-    {
-      title: "Week 2 — Technical depth",
-      focus: [
-        "Two timed drills on resume technologies — explain internals, not APIs only.",
-        gaps.some((g) => g.includes("uncertainty"))
-          ? "Practice admitting gaps then proposing a debug/research plan."
-          : "Add diagrams for one complex project weekly.",
-      ],
-    },
-    {
-      title: "Week 3 — Coding fluency",
-      focus: [
-        p.codingQuestion
-          ? "Repeat workspace prompt until comfortable under 25 minutes."
-          : "3 medium LeetCode-style tasks emphasizing patterns from your CV.",
-        "Write edge-case checks aloud before coding.",
-      ],
-    },
-    {
-      title: "Week 4 — Company calibration",
-      focus: [
-        `Research ${p.company}'s stack blog posts and align talking points.`,
-        "Mock with friend — strict interviewer persona + interruptions.",
-      ],
-    },
-  ];
-  return weeks;
-}
-
-function inferGapsFromTranscript(messages: InterviewTranscriptLine[]): string[] {
-  const userBlob = messages
-    .filter((m) => m.role === "user")
-    .map((m) => m.content.toLowerCase())
-    .join(" ");
-  const out: string[] = [];
-  if (/optimize|complexity|big.?o/.test(userBlob))
-    out.push("Solidify algorithms verbal framing");
-  if (/scale|distributed|microservice/.test(userBlob))
-    out.push("Distributed systems narratives");
-  return out;
+  if (p.liveRoadmap?.weeks?.length) {
+    return p.liveRoadmap.weeks.map((w) => ({
+      title: w.title,
+      focus: w.focus,
+    }));
+  }
+  return buildLiveInterviewRoadmap({
+    company: p.company,
+    roundStage: p.roundStage ?? "technical",
+    messages: p.messages,
+    weaknessHints: p.weaknessHints,
+    codingQuestion: p.codingQuestion,
+  }).weeks.map((w) => ({ title: w.title, focus: w.focus }));
 }
 
 function extractTopics(messages: InterviewTranscriptLine[]): string[] {
@@ -126,7 +91,9 @@ export function buildDebriefSummary(
     };
   }
   return {
-    headline: `Personalized roadmap after your ${payload.company} interview drill`,
+    headline:
+      payload.liveRoadmap?.headline ??
+      `Personalized roadmap after your ${payload.company} interview drill`,
     bullets: buildMockImprovements(payload),
     roadmap: buildRoadmapWeeks(payload),
   };

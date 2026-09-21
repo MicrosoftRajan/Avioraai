@@ -2,6 +2,7 @@
 
 import CodingEnvironmentGate from "@/components/interviewmode/CodingEnvironmentGate";
 import InterviewCodingWorkspace from "@/components/interviewmode/InterviewCodingWorkspace";
+import InterviewLiveRoadmap from "@/components/interviewmode/InterviewLiveRoadmap";
 import { INTERVIEW_ROUND_OPTIONS } from "@/components/interviewmode/types";
 import {
   coerceInterviewCodingLanguage,
@@ -20,6 +21,12 @@ import {
   type CompanyCodingChallenge,
 } from "@/lib/interview-coding-questions";
 import { collectWeaknessHintsFromUserLine } from "@/lib/interview-debrief";
+import {
+  buildLiveInterviewRoadmap,
+  mergeAiRoadmap,
+  snapshotLiveRoadmap,
+  type LiveInterviewRoadmap,
+} from "@/lib/interview-roadmap";
 import { persistInterviewSessionDebrief } from "@/lib/actions/interview-mode.actions";
 import {
   type InterviewDebriefPayload,
@@ -29,6 +36,7 @@ import {
   type InterviewTranscriptLine,
 } from "@/lib/interview-session-storage";
 import { isBenignMeetingShutdown } from "@/lib/vapi-meeting-errors";
+import { vapiErrorMessage } from "@/lib/vapi-auth";
 import { safeVapiStart, safeVapiStop, vapi } from "@/lib/vapi.sdk";
 import { cn } from "@/lib/utils";
 import { ArrowLeft, Mic, MicOff, PhoneOff } from "lucide-react";
@@ -59,11 +67,17 @@ export default function InterviewSession() {
   const [payload, setPayload] = useState<InterviewSessionPayload | null>(null);
   const payloadRef = useRef<InterviewSessionPayload | null>(null);
   const [callStatus, setCallStatus] = useState<CallStatus>("idle");
+  const [voiceError, setVoiceError] = useState<string | null>(null);
   const [muted, setMuted] = useState(false);
   const [subtitle, setSubtitle] = useState("");
   const [messages, setMessages] = useState<InterviewTranscriptLine[]>([]);
   const messagesRef = useRef<InterviewTranscriptLine[]>([]);
   const weaknessHintsRef = useRef<string[]>([]);
+  const [weaknessHints, setWeaknessHints] = useState<string[]>([]);
+  const [aiRoadmap, setAiRoadmap] = useState<LiveInterviewRoadmap | null>(null);
+  const [roadmapUpdating, setRoadmapUpdating] = useState(false);
+  const [roadmapAiEnhanced, setRoadmapAiEnhanced] = useState(false);
+  const liveRoadmapRef = useRef<LiveInterviewRoadmap | null>(null);
   const codingQuestionRef = useRef("");
   const codingChallengeRef = useRef<CompanyCodingChallenge | null>(null);
   const [codingOpen, setCodingOpen] = useState(false);
@@ -113,6 +127,38 @@ export default function InterviewSession() {
     payload?.roundStage,
   ]);
 
+  const localRoadmap = useMemo(() => {
+    if (!payload) return null;
+    return buildLiveInterviewRoadmap({
+      company: payload.company,
+      roundStage: payload.roundStage ?? "technical",
+      messages,
+      weaknessHints,
+      codingQuestion:
+        codingChallengeRef.current
+          ? challengeDisplayTitle(codingChallengeRef.current)
+          : codingQuestion || null,
+      codingOpen,
+      callActive: callStatus === "active" || callStatus === "connecting",
+    });
+  }, [
+    payload,
+    messages,
+    weaknessHints,
+    codingQuestion,
+    codingOpen,
+    callStatus,
+  ]);
+
+  const liveRoadmap = useMemo(() => {
+    if (!localRoadmap) return null;
+    return aiRoadmap ? mergeAiRoadmap(localRoadmap, aiRoadmap) : localRoadmap;
+  }, [localRoadmap, aiRoadmap]);
+
+  useEffect(() => {
+    liveRoadmapRef.current = liveRoadmap;
+  }, [liveRoadmap]);
+
   useEffect(() => {
     messagesRef.current = messages;
   }, [messages]);
@@ -135,6 +181,10 @@ export default function InterviewSession() {
       }
       navigatedRef.current = false;
       weaknessHintsRef.current = [];
+      setWeaknessHints([]);
+      setAiRoadmap(null);
+      setRoadmapAiEnhanced(false);
+      setRoadmapUpdating(false);
       messagesRef.current = [];
       codingQuestionRef.current = "";
       setMessages([]);
@@ -176,6 +226,63 @@ export default function InterviewSession() {
     };
   }, [payload?.resumeText, payload?.company, payload?.roundStage]);
 
+  useEffect(() => {
+    if (!payload || messages.length < 2) return;
+    if (callStatus !== "active" && callStatus !== "ended") return;
+
+    const ac = new AbortController();
+    const timer = window.setTimeout(() => {
+      setRoadmapUpdating(true);
+      void fetch("/api/interview/roadmap", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: ac.signal,
+        body: JSON.stringify({
+          company: payload.company,
+          roundStage: payload.roundStage ?? "technical",
+          messages,
+          weaknessHints,
+          codingQuestion:
+            codingChallengeRef.current
+              ? challengeDisplayTitle(codingChallengeRef.current)
+              : codingQuestion || null,
+          codingOpen,
+          callActive: callStatus === "active",
+        }),
+      })
+        .then((r) => r.json())
+        .then(
+          (data: {
+            roadmap?: LiveInterviewRoadmap;
+            aiEnhanced?: boolean;
+          }) => {
+            if (data.roadmap) {
+              setAiRoadmap(data.roadmap);
+              setRoadmapAiEnhanced(Boolean(data.aiEnhanced));
+            }
+          },
+        )
+        .catch((err: unknown) => {
+          if (err instanceof DOMException && err.name === "AbortError") return;
+        })
+        .finally(() => {
+          if (!ac.signal.aborted) setRoadmapUpdating(false);
+        });
+    }, 4500);
+
+    return () => {
+      window.clearTimeout(timer);
+      ac.abort();
+    };
+  }, [
+    payload,
+    messages,
+    weaknessHints,
+    codingQuestion,
+    codingOpen,
+    callStatus,
+  ]);
+
   const finalizeToDebrief = useCallback(async () => {
     if (navigatedRef.current) return;
     const p = payloadRef.current;
@@ -195,6 +302,9 @@ export default function InterviewSession() {
           : codingQuestionRef.current.trim() || null,
       endedAt,
       roundStage: p.roundStage ?? "technical",
+      liveRoadmap: liveRoadmapRef.current
+        ? snapshotLiveRoadmap(liveRoadmapRef.current)
+        : undefined,
     };
     sessionStorage.setItem(INTERVIEW_DEBRIEF_KEY, JSON.stringify(debrief));
     const sid = p.supabaseSessionId;
@@ -317,6 +427,7 @@ export default function InterviewSession() {
             weaknessHintsRef.current = [
               ...new Set([...weaknessHintsRef.current, ...hints]),
             ].slice(0, 24);
+            setWeaknessHints(weaknessHintsRef.current);
           }
         }
       }
@@ -325,6 +436,8 @@ export default function InterviewSession() {
     const onError = (e: unknown) => {
       if (isBenignMeetingShutdown(e)) return;
       console.warn("[vapi]", e);
+      setVoiceError(vapiErrorMessage(e));
+      setCallStatus((st) => (st === "connecting" ? "idle" : st));
     };
 
     vapi.on("call-start", onCallStart);
@@ -361,10 +474,11 @@ export default function InterviewSession() {
     };
   }, []);
 
-  const startCall = () => {
+  const startCall = async () => {
     const p = payloadRef.current;
     if (!p?.mode) return;
     callEndingRef.current = false;
+    setVoiceError(null);
     setCallStatus("connecting");
     const first = p.name.trim().split(/\s+/)[0] || "there";
     const roundStage = p.roundStage ?? "technical";
@@ -399,8 +513,13 @@ export default function InterviewSession() {
       serverMessages: [],
     };
 
-    // @ts-expect-error Vapi start overload
-    safeVapiStart(assistant, assistantOverrides);
+    try {
+      // @ts-expect-error Vapi start overload
+      await safeVapiStart(assistant, assistantOverrides);
+    } catch (error) {
+      setVoiceError(vapiErrorMessage(error));
+      setCallStatus("idle");
+    }
   };
 
   const stopCall = () => {
@@ -460,7 +579,7 @@ export default function InterviewSession() {
         manualstart
         className="pointer-events-none fixed inset-0 z-[60] h-full w-full"
       />
-      <div className="relative z-10 mx-auto min-h-[calc(100dvh-5.25rem)] w-full max-w-5xl px-4 pb-16 pt-8">
+      <div className="relative z-10 mx-auto min-h-[calc(100dvh-5.25rem)] w-full max-w-6xl px-4 pb-16 pt-8">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <Link
           href="/interview-mode"
@@ -514,25 +633,32 @@ export default function InterviewSession() {
           {roundStage === "technical" ? (
             <>
               Start when you&apos;re ready. This technical round blends CV-deep
-              review with realistic depth questions. When it&apos;s time to code,
-              you&apos;ll be asked permission before we open the IDE with a{" "}
-              {payload.company}-style question and test cases in comments. The call
-              ends automatically when the timer hits zero.
+              review with realistic depth questions. The roadmap below updates
+              from what you say. When it&apos;s time to code, you&apos;ll be
+              asked permission before we open the IDE with a {payload.company}
+              -style question. The call ends when the timer hits zero.
             </>
           ) : roundStage === "managerial" ? (
             <>
               Executive-style leadership conversation — formal tone and
               polished wording throughout. No live coding in this round; focus on
-              judgment, stakeholders, and delivery accountability.
+              judgment, stakeholders, and delivery accountability. Your roadmap
+              tracks themes as they appear.
             </>
           ) : (
             <>
               Structured HR conversation modeled after professional screenings —
               courteous, formal tone covering motivations, expectations, and values
-              fit as appropriate. No coding exercises.
+              fit as appropriate. No coding exercises. The roadmap follows the
+              conversation in real time.
             </>
           )}
         </p>
+        {voiceError ? (
+          <p className="mt-3 max-w-xl text-sm font-semibold text-red-700">
+            {voiceError}
+          </p>
+        ) : null}
 
         <div className="mt-6 flex flex-wrap gap-3">
           {callStatus === "idle" ? (
@@ -580,6 +706,15 @@ export default function InterviewSession() {
           ) : null}
         </div>
       </header>
+
+      {liveRoadmap ? (
+        <InterviewLiveRoadmap
+          roadmap={liveRoadmap}
+          updating={roadmapUpdating}
+          callActive={callStatus === "active"}
+          aiEnhanced={roadmapAiEnhanced}
+        />
+      ) : null}
 
       {roundStage === "technical" && techFaqs.length > 0 ? (
         <details

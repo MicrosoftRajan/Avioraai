@@ -24,6 +24,7 @@ export async function POST(req: Request) {
       codingQuestion: body.codingQuestion ?? null,
       endedAt: body.endedAt ?? Date.now(),
       roundStage: body.roundStage,
+      liveRoadmap: body.liveRoadmap,
     };
 
     const summary = buildDebriefSummary(body.mode, payload);

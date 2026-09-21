@@ -149,6 +149,23 @@ export default function AppMindMap() {
         },
       },
       {
+        id: "findjob",
+        position: { x: 880, y: 160 },
+        data: {
+          label: (
+            <div className={`${neoNode} bg-[#a5f3fc]`}>
+              <div className="text-xs font-black uppercase tracking-widest text-black/70">
+                Jobs
+              </div>
+              <div className="text-lg font-extrabold">Find Job</div>
+              <div className="text-xs font-semibold text-black/75">
+                Search · align · auto-apply
+              </div>
+            </div>
+          ),
+        },
+      },
+      {
         id: "subscription",
         position: { x: 1760, y: -40 },
         data: {
@@ -181,6 +198,7 @@ export default function AppMindMap() {
       { id: "e8", source: "session", target: "history" },
       { id: "e9", source: "home", target: "subscription" },
       { id: "e10", source: "history", target: "subscription" },
+      { id: "e11", source: "home", target: "findjob", animated: true },
     ],
     []
   );

@@ -2,6 +2,14 @@
 
 import { auth } from "@clerk/nextjs/server"
 import { createSupabaseClient } from "@/lib/supabase"
+import {
+  localAddSession,
+  localCreateCompanion,
+  localGetCompanion,
+  localGetCompanions,
+  localGetSessions,
+  localGetUserCompanions,
+} from "@/lib/local-companion-store"
 
 /** Companion row joined with session_history for lists (keys vary by DB shape). */
 export type SessionCompanionRow = {
@@ -17,6 +25,9 @@ export type SessionCompanionRow = {
 export const createCompanion = async (formData:CreateCompanion) => {
     const {userId : author} = await auth();
     const supabase = createSupabaseClient()
+    if (!supabase) {
+        return localCreateCompanion(formData, author ?? null);
+    }
 
     const {data, error} = await supabase
     .from('companion')
@@ -30,6 +41,9 @@ export const createCompanion = async (formData:CreateCompanion) => {
 
 export const getAllCompanions = async({limit=10, page =1,subject,topic}:GetAllCompanions) => {
 const supabase = createSupabaseClient();
+if (!supabase) {
+    return localGetCompanions({ limit, page, subject, topic });
+}
 
 let query = supabase.from('companion').select();
 
@@ -51,6 +65,9 @@ if(error) throw new Error(error.message)
 
 export const getComapnaion = async(id:string) => {
     const supabase = createSupabaseClient();
+    if (!supabase) {
+        return localGetCompanion(id);
+    }
 
     const {data, error} = await supabase.from('companion').select().eq('id',id);
 
@@ -62,6 +79,9 @@ export const getComapnaion = async(id:string) => {
 export const addToSessionHistory = async (companionId: string) => {
   const { userId } = await auth();
   const supabase = createSupabaseClient();
+  if (!supabase) {
+    return localAddSession(companionId, userId ?? null);
+  }
 
   const { data, error } = await supabase
     .from('session_history')
@@ -81,6 +101,9 @@ export const getRecentSessions = async (
   limit = 10
 ): Promise<SessionCompanionRow[]> => {
   const supabase = createSupabaseClient();
+  if (!supabase) {
+    return localGetSessions({ limit });
+  }
 
   const { data, error } = await supabase
     .from('session_history')
@@ -112,6 +135,9 @@ export const getUserSessions = async (
 ): Promise<SessionCompanionRow[]> => {
 
   const supabase = createSupabaseClient();
+  if (!supabase) {
+    return localGetSessions({ userId, limit });
+  }
 
   const { data, error } = await supabase
     .from('session_history')
@@ -140,6 +166,9 @@ export const getUserSessions = async (
 export const getUserCompanion = async (userId: string) => {
 
   const supabase = createSupabaseClient();
+  if (!supabase) {
+    return localGetUserCompanions(userId);
+  }
 
   const { data, error } = await supabase
     .from('companion')
